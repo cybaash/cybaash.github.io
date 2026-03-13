@@ -11,7 +11,10 @@ const FontLink = () => (
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const ADMIN_CREDS_KEY = 'portfolio_admin_pw'
-const DEFAULT_PW      = 'Aasiq@2025'
+// SECURITY FIX: No hardcoded default password. On first run the user is
+// prompted to create one during setup. This prevents "default password" attacks
+// where anyone who reads the source code can access the admin panel.
+const DEFAULT_PW      = ''
 
 const NAV = [
   { id:'dashboard',   label:'Dashboard',   icon:'⬡' },
@@ -392,12 +395,16 @@ function SyncToast({ state }) {
 // SETUP WIZARD (first run — no Supabase config yet)
 // ══════════════════════════════════════════════════════════════════════════
 function SetupWizard({ onComplete }) {
-  const [step, setStep]   = useState(0) // 0=intro, 1=supabase, 2=done
+  const [step, setStep]   = useState(0) // 0=intro, 1=supabase, 2=password, 3=done
   const [url, setUrl]     = useState('')
   const [key, setKey]     = useState('')
   const [testing, setTesting] = useState(false)
   const [err, setErr]     = useState('')
   const [ok, setOk]       = useState(false)
+  // SECURITY FIX: password is created during setup instead of being hardcoded
+  const [newPw, setNewPw]   = useState('')
+  const [confPw, setConfPw] = useState('')
+  const [pwErr, setPwErr]   = useState('')
 
   const testAndSave = async () => {
     setTesting(true); setErr(''); setOk(false)
@@ -407,6 +414,15 @@ function SetupWizard({ onComplete }) {
     saveSupabaseConfig(url.trim(), key.trim())
     setOk(true)
     setTimeout(() => { setStep(2) }, 1200)
+  }
+
+  const savePassword = () => {
+    if (newPw.length < 8)          { setPwErr('Password must be at least 8 characters'); return }
+    if (newPw !== confPw)           { setPwErr('Passwords do not match'); return }
+    if (!/[^a-zA-Z0-9]/.test(newPw)) { setPwErr('Include at least one special character (e.g. @, !, #)'); return }
+    setAdminPw(newPw)
+    setPwErr('')
+    setStep(3)
   }
 
   return (
@@ -423,7 +439,7 @@ function SetupWizard({ onComplete }) {
           </div>
 
           <div className="step-indicator">
-            {[0,1,2].map(i=>(
+            {[0,1,2,3].map(i=>(
               <div key={i} className={`step-dot${step===i?' active':step>i?' done':''}`}/>
             ))}
           </div>
@@ -502,10 +518,34 @@ alter publication supabase_realtime add table portfolio_data;`}
           )}
 
           {step===2 && (
+            <div>
+              <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:12,color:'var(--g)',letterSpacing:2,marginBottom:16}}>STEP 2 — SET ADMIN PASSWORD</div>
+              <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.7,marginBottom:20}}>
+                Create a strong password for the admin panel. This is stored locally in your browser and is never sent to Supabase.
+              </p>
+              {pwErr && <div className="auth-error">⚠ {pwErr}</div>}
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <input className="form-input" type="password" value={newPw}
+                  onChange={e=>setNewPw(e.target.value)} placeholder="Min 8 chars, include a special char"/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <input className="form-input" type="password" value={confPw}
+                  onChange={e=>setConfPw(e.target.value)} placeholder="Repeat password"/>
+              </div>
+              <button className="btn btn-green" style={{width:'100%',justifyContent:'center'}}
+                onClick={savePassword} disabled={!newPw||!confPw}>
+                ▶ SET PASSWORD
+              </button>
+            </div>
+          )}
+
+          {step===3 && (
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:48,marginBottom:16}}>✓</div>
               <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:14,color:'var(--g)',letterSpacing:2,marginBottom:12}}>SETUP COMPLETE</div>
-              <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.7,marginBottom:24}}>Supabase is connected. Now log in with your admin password to start editing.</p>
+              <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.7,marginBottom:24}}>Supabase is connected and your password is set. Click below to log in.</p>
               <button className="btn btn-green" style={{width:'100%',justifyContent:'center'}} onClick={onComplete}>
                 ▶ GO TO LOGIN
               </button>
@@ -638,8 +678,15 @@ function AboutSection({ data, onSave }) {
   const u = k => e => setD(p=>({...p,[k]:e.target.value}))
   const handleSave = async () => {
     setSaving(true)
-    await onSave(d)
-    setSaving(false); setSaved(true); setTimeout(()=>setSaved(false),2000)
+    try {
+      await onSave(d)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      console.error('[AboutSection] save failed:', e.message)
+    } finally {
+      setSaving(false)
+    }
   }
   return (
     <div>
@@ -705,7 +752,11 @@ function SkillsSection({ data, onSave }) {
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving]   = useState(false)
   useEffect(()=>{ setCats(data||[]) }, [data])
-  const commit = async updated => { setCats(updated); setSaving(true); await onSave(updated); setSaving(false) }
+  const commit = async updated => {
+    setCats(updated)
+    setSaving(true)
+    try { await onSave(updated) } catch (e) { console.error('[SkillsSection] save failed:', e.message) } finally { setSaving(false) }
+  }
   const levelPct = {Beginner:25,Intermediate:55,Advanced:80,Expert:100}
 
   const openCatModal   = (ci=null) => { setForm(ci===null?BLANK_CAT():{...cats[ci]}); setModal({mode:'cat',ci}) }
@@ -854,7 +905,11 @@ function CredentialsSection({ data, onSave }) {
   const [saving, setSaving]   = useState(false)
   useEffect(()=>{ setCreds(data||[]) }, [data])
 
-  const commit = async u => { setCreds(u); setSaving(true); await onSave(u); setSaving(false) }
+  const commit = async u => {
+    setCreds(u)
+    setSaving(true)
+    try { await onSave(u) } catch (e) { console.error('[CredentialsSection] save failed:', e.message) } finally { setSaving(false) }
+  }
 
   const open = (id = null) => {
     if (id) {
@@ -1234,7 +1289,11 @@ function ProjectsSection({ data, onSave }) {
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving]   = useState(false)
   useEffect(()=>{ setItems(data||[]) }, [data])
-  const commit = async u => { setItems(u); setSaving(true); await onSave(u); setSaving(false) }
+  const commit = async u => {
+    setItems(u)
+    setSaving(true)
+    try { await onSave(u) } catch (e) { console.error('[ProjectsSection] save failed:', e.message) } finally { setSaving(false) }
+  }
   const open   = (id=null) => { setForm(id?{...items.find(p=>p.id===id)}:BLANK_PROJ()); setModal(id||'new') }
   const save   = async () => { await commit(modal==='new'?[...items,form]:items.map(p=>p.id===modal?form:p)); setModal(null) }
   const del    = async id  => { await commit(items.filter(p=>p.id!==id)); setConfirm(null) }
@@ -1317,7 +1376,11 @@ function FlagsSection({ data, onSave }) {
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving] = useState(false)
   useEffect(()=>{ setItems(data||[]) }, [data])
-  const commit = async u => { setItems(u); setSaving(true); await onSave(u); setSaving(false) }
+  const commit = async u => {
+    setItems(u)
+    setSaving(true)
+    try { await onSave(u) } catch (e) { console.error('[FlagsSection] save failed:', e.message) } finally { setSaving(false) }
+  }
   const open   = (id=null) => { setForm(id?{...items.find(f=>f.id===id)}:BLANK_FLAG()); setModal(id||'new') }
   const save   = async () => { await commit(modal==='new'?[...items,form]:items.map(f=>f.id===modal?form:f)); setModal(null) }
   const del    = async id  => { await commit(items.filter(f=>f.id!==id)); setConfirm(null) }
@@ -1398,7 +1461,11 @@ function ExperienceSection({ data, onSave }) {
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving]   = useState(false)
   useEffect(()=>{ setItems(data||[]) }, [data])
-  const commit = async u => { setItems(u); setSaving(true); await onSave(u); setSaving(false) }
+  const commit = async u => {
+    setItems(u)
+    setSaving(true)
+    try { await onSave(u) } catch (e) { console.error('[ExperienceSection] save failed:', e.message) } finally { setSaving(false) }
+  }
   const open   = (id=null) => { setForm(id?{...items.find(e=>e.id===id)}:BLANK_EXP()); setModal(id||'new') }
   const save   = async () => { await commit(modal==='new'?[...items,form]:items.map(e=>e.id===modal?form:e)); setModal(null) }
   const del    = async id  => { await commit(items.filter(e=>e.id!==id)); setConfirm(null) }
@@ -1491,7 +1558,18 @@ function ContactSection({ data, onSave }) {
   const [saved, setSaved]   = useState(false)
   useEffect(()=>{ setD(data||{}) }, [data])
   const u = k => e => setD(p=>({...p,[k]:e.target.value}))
-  const handleSave = async () => { setSaving(true); await onSave(d); setSaving(false); setSaved(true); setTimeout(()=>setSaved(false),2000) }
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await onSave(d)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      console.error('[ContactSection] save failed:', e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
   return (
     <div>
       <div className="section-header">

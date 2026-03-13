@@ -27,7 +27,12 @@ export function getClient() {
   return _client
 }
 
+// FIX: resetClient now removes lingering channel subscriptions
+// to prevent memory leaks when the user reconnects with new credentials.
 export function resetClient() {
+  if (_client) {
+    try { _client.removeAllChannels() } catch (_) { /* ignore */ }
+  }
   _client = null
 }
 
@@ -72,9 +77,11 @@ export async function loadAll(defaults) {
     const { data, error } = await sb.from('portfolio_data').select('id, data')
     if (error || !data) return defaults
     const result = { ...defaults }
-    // Load ALL rows from DB — not just ones matching defaults keys
-    // This ensures new sections added later still load correctly
-    data.forEach(row => { if (row.id && row.data !== undefined) result[row.id] = row.data })
+    // FIX 1: Skip the connection-test heartbeat row — it should never
+    //         appear in the live portfolio or admin data.
+    // FIX 2: Guard against null data values that would overwrite default
+    //         arrays/objects and cause downstream .length crashes.
+    data.forEach(row => { if (row.id && row.id !== '__connection_test__' && row.data != null) result[row.id] = row.data })
     return result
   } catch { return defaults }
 }
@@ -90,8 +97,13 @@ export function subscribeToChanges(callback) {
   return () => sb.removeChannel(channel)
 }
 
-// Test connection by pinging the table
+// Test connection by pinging the table with a read then a write.
+// FIX: validates inputs, and deletes the heartbeat row after writing
+//      so it never pollutes the live portfolio_data table.
 export async function testConnection(url, anonKey) {
+  if (!url || !anonKey) {
+    return { ok: false, msg: 'URL and anon key are required.' }
+  }
   try {
     const client = createClient(url, anonKey)
     // Test read
@@ -102,6 +114,8 @@ export async function testConnection(url, anonKey) {
       .from('portfolio_data')
       .upsert({ id: '__connection_test__', data: { ts: Date.now() }, updated_at: new Date().toISOString() }, { onConflict: 'id' })
     if (writeErr) return { ok: false, msg: `Write failed — check RLS policies allow INSERT/UPDATE for anon role: ${writeErr.message}` }
+    // FIX: clean up the test row so it never shows in the live portfolio
+    await client.from('portfolio_data').delete().eq('id', '__connection_test__')
     return { ok: true }
   } catch (e) {
     return { ok: false, msg: e.message }

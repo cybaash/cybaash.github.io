@@ -1124,8 +1124,11 @@ document.querySelectorAll('.cert-card,.focus-card,.contact-card').forEach(card=>
 // The portfolio reads from localStorage first (set by admin panel),
 // then falls back to the hardcoded values below.
 const _storedCfg = (()=>{ try { const r=localStorage.getItem('portfolio_supabase_config'); return r?JSON.parse(r):null; } catch{return null;} })();
-const SUPABASE_URL      = _storedCfg?.url      || 'https://rvdfkygdgetwtewylmbc.supabase.co';
-const SUPABASE_ANON_KEY = _storedCfg?.anonKey  || 'sb_publishable_aRFP7bjcaKwtjHdlcIrjpw_f23PfjlQ';
+// SECURITY FIX: Credentials are no longer hardcoded here.
+// They are set by the admin panel and stored in localStorage.
+// To deploy, run the admin panel first-run setup, which persists the config.
+const SUPABASE_URL      = _storedCfg?.url      || '';
+const SUPABASE_ANON_KEY = _storedCfg?.anonKey  || '';
 
 // ── Supabase REST helper ───────────────────────────────────────────────────
 async function sbGet(table, filter) {
@@ -1654,7 +1657,8 @@ async function loadAll() {
     }
     console.log('[Supabase] loaded', rows.length, 'sections:', rows.map(r=>r.id));
     rows.forEach(row => {
-      if (row.id && row.data !== undefined) applySection(row.id, row.data);
+      // FIX: skip the connection-test heartbeat row and guard against null data
+      if (row.id && row.id !== '__connection_test__' && row.data != null) applySection(row.id, row.data);
     });
   } catch(e) {
     console.error('[Supabase] loadAll failed:', e.message);

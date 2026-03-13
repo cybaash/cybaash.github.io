@@ -929,8 +929,13 @@ function CredentialsSection({ data, onSave }) {
                   <tr key={c.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {c.logo && (
-                          <img src={c.logo} alt="" style={{ width: 28, height: 28, objectFit: 'contain', border: '1px solid var(--bd)' }} onError={e => e.target.style.display = 'none'}/>
+                        {(c.logo || (c.issuer === 'LinkedIn Learning' || c.issuer === 'LinkedIn')) && (
+                          <img
+                            src={c.logo || 'https://media.licdn.com/dms/image/C560BAQHaVYd13rRz3A/company-logo_200_200/0/1638831590136/linkedin_learning_logo/linkedin_learning_logo.png'}
+                            alt=""
+                            style={{ width: 28, height: 28, objectFit: 'contain', border: '1px solid var(--bd)', background: 'var(--bg2)', padding: 2 }}
+                            onError={e => e.target.style.display = 'none'}
+                          />
                         )}
                         <div>
                           <div style={{ fontWeight: 700 }}>{c.title}</div>

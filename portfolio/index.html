@@ -1420,8 +1420,17 @@ function applyCredentials(creds) {
 
   // Pre-compute all three filtered arrays (used for both grid rendering AND count sync)
   var credly = creds.filter(function(c) { return c.type === 'badge' || c.type === 'credly' || (c.credlyBadgeId && c.credlyBadgeId.length > 0); });
-  var professional = creds.filter(function(c) { return c.type !== 'linkedin' && c.type !== 'learning-path' && c.type !== 'other' && c.issuer !== 'LinkedIn' && c.issuer !== 'LinkedIn Learning' && c.type !== 'credly' && c.type !== 'badge' && !(c.credlyBadgeId && c.credlyBadgeId.length > 0); });
-  var linkedin = creds.filter(function(c) { return c.type === 'linkedin' || c.type === 'learning-path' || c.type === 'other' || c.issuer === 'LinkedIn' || c.issuer === 'LinkedIn Learning'; });
+  // FIX: type='certificate' always goes to professional grid regardless of issuer.
+  // This ensures LinkedIn Learning paths (type=certificate, issuer=LinkedIn Learning)
+  // appear in the Professional tab, not the LinkedIn courses tab.
+  var professional = creds.filter(function(c) {
+    return c.type === 'certificate' || c.type === 'exam';
+  });
+  var linkedin = creds.filter(function(c) {
+    return c.type === 'linkedin' || c.type === 'learning-path' ||
+           c.type === 'other' ||
+           (c.issuer === 'LinkedIn' || c.issuer === 'LinkedIn Learning') && c.type !== 'certificate';
+  });
 
   // 2. Credly badges grid
   var gridCredly = document.getElementById('grid-credly');

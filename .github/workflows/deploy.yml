@@ -1,8 +1,9 @@
 name: Deploy AASIQ OS to GitHub Pages
 
 on:
-  push:
-    branches: [main]
+  # deploy.yml is a MANUAL FALLBACK only.
+  # sync.yml handles all automatic deployments on push to main.
+  # Having both trigger on push causes a race condition for the GitHub Pages slot.
   workflow_dispatch:
 
 permissions:

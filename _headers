@@ -1,25 +1,42 @@
-# _headers — served by GitHub Pages via Cloudflare Pages routing rules.
-# GitHub Pages itself does not process _headers files the way Netlify/CF Pages does,
-# but this file is included so that if you migrate to Netlify or Cloudflare Pages
-# the headers are already correct. For GitHub Pages, the cache-busting ?v=Date.now()
-# query param in the portfolio fetch() call achieves the same effect.
+# _headers — cache rules for Netlify / Cloudflare Pages.
+# GitHub Pages ignores this file, but it's included so migration is seamless.
+# On GitHub Pages, cache-busting is handled by ?v=Date.now() in the fetch() calls.
 
-/portfolio/data.json
+# ── Split data files: never cache (admin writes these) ───────────────────────
+/portfolio/data_main.json
   Content-Type: application/json; charset=utf-8
   Cache-Control: no-cache, must-revalidate
   X-Content-Type-Options: nosniff
 
-/admin/data.json
+/portfolio/data_creds_1.json
   Content-Type: application/json; charset=utf-8
   Cache-Control: no-cache, must-revalidate
   X-Content-Type-Options: nosniff
 
+/portfolio/data_creds_2.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: no-cache, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/portfolio/data_creds_3.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: no-cache, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/portfolio/data_creds_4.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: no-cache, must-revalidate
+  X-Content-Type-Options: nosniff
+
+# ── All other JSON ────────────────────────────────────────────────────────────
 /*.json
   Content-Type: application/json; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate
 
+# ── Admin panel assets: immutable (content-hashed by Vite) ───────────────────
 /admin/*
   Cache-Control: public, max-age=31536000, immutable
 
+# ── HTML pages: always revalidate ────────────────────────────────────────────
 /
   Cache-Control: no-cache, must-revalidate

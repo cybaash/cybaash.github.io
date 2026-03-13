@@ -590,15 +590,6 @@ button:focus-visible,a:focus-visible{outline:2px solid #00ff41;}
       <!-- Populated dynamically from Supabase via applySkills() -->
     </div>
 
-    <div class='cert-groups' id='cert-groups-dynamic'>
-      <!-- Populated dynamically from Supabase via applyCredentials() -->
-      <div class='cert-group' style='border-color:#1a3a1a;opacity:0.4;'>
-        <div class='cert-group-header'>
-          <span class='cert-group-icon'>⟳</span>
-          <span class='cert-group-title' style='color:#3a7a3a;'>LOADING CREDENTIALS...</span>
-        </div>
-      </div>
-    </div>
   </div>
 </section>
 
@@ -651,9 +642,9 @@ button:focus-visible,a:focus-visible{outline:2px solid #00ff41;}
         <span class='cg-sub-icon'>🎖️</span>
         CREDLY BADGES
         <span class='cg-sub-count' id='count-credly'>—</span>
-        <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00ff41;'>&#9660;</span>
+        <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00ff41;'>▶</span>
       </div>
-      <div class='cg-folder-body' id='folder-credly-body' style='max-height:600px;opacity:1;'>
+      <div class='cg-folder-body collapsed' id='folder-credly-body' style='max-height:0;opacity:0;'>
         <div class='cg-grid' id='grid-credly'>
           <div class='cg-card' style='opacity:0.4;border-color:#1a2e1a;'>
             <div class='cg-logo-wrap'><span style='font-size:24px;'>⟳</span></div>
@@ -664,13 +655,13 @@ button:focus-visible,a:focus-visible{outline:2px solid #00ff41;}
     </div>
 
                 <div class='cg-subsection' id='sub-professional'>
-    <div class='cg-subsection-title cg-folder-toggle' data-target='folder-professional-body' data-open='1' onclick='toggleFolder(this)' style='cursor:pointer;user-select:none;'>
+    <div class='cg-subsection-title cg-folder-toggle' data-target='folder-professional-body' onclick='toggleFolder(this)' style='cursor:pointer;user-select:none;'>
       <span class='cg-sub-icon'>🏆</span>
       PROFESSIONAL CERTIFICATES
       <span class='cg-sub-count' id='count-professional'>—</span>
-      <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00ff41;'>&#9660;</span>
+      <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00ff41;'>▶</span>
     </div>
-    <div class='cg-folder-body' id='folder-professional-body' style='max-height:none;opacity:1;'>
+    <div class='cg-folder-body collapsed' id='folder-professional-body' style='max-height:0;opacity:0;'>
     <div class='cg-grid' id='grid-professional'>
       <div class='cg-card' style='opacity:0.4;border-color:#1a2e1a;'>
         <div class='cg-logo-wrap'><span style='font-size:24px;'>⟳</span></div>
@@ -681,13 +672,13 @@ button:focus-visible,a:focus-visible{outline:2px solid #00ff41;}
   </div>
 
   <div class='cg-subsection' id='sub-linkedin'>
-    <div class='cg-subsection-title cg-folder-toggle' data-target='folder-linkedin-body' data-open='1' onclick='toggleFolder(this)' style='cursor:pointer;user-select:none;'>
+    <div class='cg-subsection-title cg-folder-toggle' data-target='folder-linkedin-body' onclick='toggleFolder(this)' style='cursor:pointer;user-select:none;'>
       <span class='cg-sub-icon' style='font-style:normal;font-weight:900;color:#0a66c2;font-size:18px;'>in</span>
       LINKEDIN LEARNING CERTIFICATES
       <span class='cg-sub-count' id='count-linkedin'>—</span>
-      <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00d4ff;'>&#9660;</span>
+      <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00d4ff;'>▶</span>
     </div>
-    <div class='cg-folder-body' id='folder-linkedin-body' style='max-height:none;opacity:1;'>
+    <div class='cg-folder-body collapsed' id='folder-linkedin-body' style='max-height:0;opacity:0;'>
     <div class='cg-grid' id='grid-linkedin'>
       <div class='cg-card' style='opacity:0.4;border-color:#1a2e1a;'>
         <div class='cg-logo-wrap'><span style='font-size:24px;'>⟳</span></div>
@@ -1252,46 +1243,6 @@ function applyCredentials(creds) {
     return "<div " + cardAttrs + "><div class='cg-card-link'>" + inner + "</div></div>";
   }
 
-  // 1. Cert-groups summary
-  var groupsContainer = document.getElementById('cert-groups-dynamic');
-  if (groupsContainer) {
-    var tagMap = {};
-    creds.forEach(function(c) {
-      var tag = (c.tags && c.tags.length) ? c.tags[0] : 'Other';
-      if (!tagMap[tag]) tagMap[tag] = [];
-      tagMap[tag].push(c);
-    });
-    var palette = [
-      {border:'#ff444433',color:'#ff4444',icon:'🔐'},{border:'#ff990033',color:'#ff9900',icon:'☁️'},
-      {border:'#a855f733',color:'#a855f7',icon:'💻'},{border:'#00d4ff33',color:'#00d4ff',icon:'🤖'},
-      {border:'#2496ed33',color:'#2496ed',icon:'⚙️'},{border:'#00ff4133',color:'#00ff41',icon:'🐧'},
-      {border:'#ff668833',color:'#ff6688',icon:'🛡️'},{border:'#ffdd0033',color:'#ffdd00',icon:'📜'},
-    ];
-    var tags = Object.keys(tagMap);
-    if (!tags.length) {
-      groupsContainer.innerHTML = "<div style='font-family:Share Tech Mono,monospace;font-size:11px;color:#3a7a3a;padding:20px;'>No credentials added yet.</div>";
-    } else {
-      groupsContainer.innerHTML = tags.map(function(tag,i) {
-        var p = palette[i % palette.length];
-        var items = tagMap[tag];
-        return "<div class='cert-group' style='border-color:" + p.border + ";'>" +
-          "<div class='cert-group-header'><span class='cert-group-icon'>" + p.icon + "</span>" +
-          "<span class='cert-group-title' style='color:" + p.color + ";'>" + tag.toUpperCase() + "</span></div>" +
-          items.map(function(c) {
-            var line = (c.title||'');
-            if (c.issuer) line += ' – ' + c.issuer;
-            if (c.date)   line += ' (' + c.date + ')';
-            var inner2 = "<span class='cert-bullet' style='color:" + p.color + ";'>&#9654;</span>" + line;
-            return c.url
-              ? "<div class='cert-item'><a href='" + c.url + "' target='_blank' rel='noopener' style='color:inherit;text-decoration:none;'>" + inner2 + "</a></div>"
-              : "<div class='cert-item'>" + inner2 + "</div>";
-          }).join('') + "</div>";
-      }).join('');
-    }
-  }
-
-  // 2. Credly badges grid
-  var gridCredly = document.getElementById('grid-credly');
   // Pre-compute all three filtered arrays (used for both grid rendering AND count sync)
   var credly = creds.filter(function(c) { return c.type === 'badge' || c.type === 'credly' || (c.credlyBadgeId && c.credlyBadgeId.length > 0); });
   var professional = creds.filter(function(c) { return c.type !== 'linkedin' && c.type !== 'learning-path' && c.issuer !== 'LinkedIn' && c.type !== 'credly' && c.type !== 'badge' && !(c.credlyBadgeId && c.credlyBadgeId.length > 0); });

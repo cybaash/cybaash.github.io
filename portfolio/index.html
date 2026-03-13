@@ -347,9 +347,9 @@ body.light-mode .hero-name-1{color:#007a20;text-shadow:0 0 20px #007a2055;}
 .cg-card:hover .cg-badge-wrap img{transform:scale(1.06);filter:none;}
 @media(max-width:600px){.cg-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}}
 
-/* LinkedIn cards visibility controlled by inline styles + JS */
-/* LinkedIn badge special display */
-/* LinkedIn card styling handled inline per card */
+/* Learning certificates visibility controlled by inline styles + JS */
+
+
 
 /* ── ACCESSIBILITY: Focus Styles ────────────────────────────────── */
 *:focus-visible{outline:2px solid #00ff41;outline-offset:2px;}
@@ -611,7 +611,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #00ff41;}
     <div aria-label='Filter by credential type' class='cg-filters' role='tablist'>
       <button aria-selected='true' class='cgfbtn cg-tab active' onclick="switchTab('all',this)" role='tab' type='button'>ALL &#160;<span id='tab-count-all'>—</span></button>
       <button aria-selected='false' class='cgfbtn cg-tab' onclick="switchTab('professional',this)" role='tab' type='button'>🏆 PROFESSIONAL &#160;<span id='tab-count-professional'>—</span></button>
-      <button aria-selected='false' class='cgfbtn cg-tab' onclick="switchTab('linkedin',this)" role='tab' type='button'><span style='font-weight:900;color:#0a66c2;font-size:14px;line-height:1;'>in</span> LINKEDIN &#160;<span id='tab-count-linkedin'>—</span></button>
+      <button aria-selected='false' class='cgfbtn cg-tab' onclick="switchTab('linkedin',this)" role='tab' type='button'>📚 OTHER LEARNING &#160;<span id='tab-count-linkedin'>—</span></button>
     </div>
 
     <!-- Sort Bar -->
@@ -674,10 +674,10 @@ button:focus-visible,a:focus-visible{outline:2px solid #00ff41;}
 
   <div class='cg-subsection' id='sub-linkedin'>
     <div class='cg-subsection-title cg-folder-toggle' data-target='folder-linkedin-body' onclick='toggleFolder(this)' style='cursor:pointer;user-select:none;'>
-      <span class='cg-sub-icon' style='font-style:normal;font-weight:900;color:#0a66c2;font-size:18px;'>in</span>
-      LINKEDIN LEARNING CERTIFICATES
+      <span class='cg-sub-icon'>📚</span>
+      OTHER LEARNING CERTIFICATES
       <span class='cg-sub-count' id='count-linkedin'>—</span>
-      <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00d4ff;'>▶</span>
+      <span class='cg-folder-arrow' style='margin-left:8px;font-size:10px;transition:transform .25s;color:#00ff41;'>▶</span>
     </div>
     <div class='cg-folder-body collapsed' id='folder-linkedin-body' style='max-height:0;opacity:0;'>
     <div class='cg-grid' id='grid-linkedin'>
@@ -772,7 +772,7 @@ window.cgApply = function() {
     var n      = (card.getAttribute('data-name')||'').toLowerCase();
     var iss    = card.getAttribute('data-issuer')||'';
     var type   = card.getAttribute('data-type')||'';
-    var isLinkedIn    = (type === 'linkedin' || type === 'learning-path' || type === 'other' || iss === 'LinkedIn');
+    var isLinkedIn    = (type === 'linkedin' || type === 'learning-path' || type === 'other');
     var isCredly      = (type === 'badge' || type === 'credly');
     var isProfessional = !isLinkedIn && !isCredly;
 
@@ -1345,37 +1345,39 @@ function applyCredentials(creds) {
   var LI_BADGE_SVG = LI_LEARNING_SVG;
 
   function buildCard(c) {
-    var isLinkedIn   = (c.type === "linkedin" || c.type === "learning-path" || c.issuer === "LinkedIn" || c.issuer === "LinkedIn Learning");
-    var isLILearning = (c.issuer === "LinkedIn Learning" || c.type === "learning-path");
-    var accentColor  = isLinkedIn ? "#0a66c2" : "#3a7a3a";
-    var accentHex    = isLinkedIn ? "#0077b5" : "#00ff41";
+    // Learning-type certs: linkedin, learning-path, other
+    var isLearning   = (c.type === "linkedin" || c.type === "learning-path" || c.type === "other");
+    var isCredly     = (c.type === "credly" || c.type === "badge");
+    var accentColor  = isLearning ? "#0a66c2" : (isCredly ? "#ff9900" : "#3a7a3a");
+    var accentHex    = isLearning ? "#0077b5" : (isCredly ? "#ff9900" : "#00ff41");
     var initials     = (c.issuer || "?").substring(0, 2).toUpperCase();
-    var initialsColor = isLinkedIn ? "#0077b5" : accentHex;
+    var initialsColor = accentHex;
 
-    var effectiveLogo = c.logo || c.logoUpload || "";
-    var borderColor = isLinkedIn ? "#0a66c244" : (effectiveLogo ? "#44e5c822" : "#1a2e1a");
-    var bgColor = isLinkedIn
+    // For Credly: prefer credlyImageUrl (CDN), then logo, then logoUpload
+    // For others: prefer logo, then logoUpload
+    var effectiveLogo;
+    if (isCredly) {
+      effectiveLogo = c.credlyImageUrl || c.logo || c.logoUpload || "";
+    } else {
+      effectiveLogo = c.logo || c.logoUpload || "";
+    }
+
+    var borderColor = isLearning ? "#0a66c244" : (effectiveLogo ? "#44e5c822" : "#1a2e1a");
+    var bgColor = isLearning
       ? "radial-gradient(circle at center,#051828 0%,#020c18 100%)"
-      : "radial-gradient(circle at 40% 40%,#0e1f0e 0%,#050d05 100%)";
+      : (isCredly ? "radial-gradient(circle at center,#1a1000 0%,#0d0800 100%)"
+                  : "radial-gradient(circle at 40% 40%,#0e1f0e 0%,#050d05 100%)");
 
     var logoAreaHtml;
 
-    if (isLinkedIn && !effectiveLogo) {
-      // Use real LinkedIn logo image (baked-in base64)
-      logoAreaHtml =
-        "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;'>" +
-        "<img src='" + LI_LOGO_B64 + "' alt='LinkedIn Learning'" +
-        " style='width:72px;height:72px;object-fit:contain;display:block;" +
-        "filter:drop-shadow(0 4px 16px rgba(10,102,194,0.6));border-radius:8px;'/>" +
-        "</div>";
-
-    } else if (effectiveLogo) {
-      if (isLinkedIn) {
+    if (effectiveLogo) {
+      if (isLearning) {
         logoAreaHtml =
           "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;'>" +
           "<img src='" + effectiveLogo + "' alt='" + (c.issuer || "") + "'" +
           " style='width:72px;height:72px;object-fit:contain;display:block;" +
-          "filter:drop-shadow(0 4px 16px rgba(10,102,194,0.7));'" +
+          "filter:drop-shadow(0 4px 16px rgba(10,102,194,0.7));border-radius:8px;'" +
+          " onerror=\"this.style.display='none';this.parentNode.innerHTML='<span style=\\'font-size:32px;font-family:Orbitron,monospace;font-weight:900;color:#0077b5;text-shadow:0 0 16px #0077b566;\\'>LE</span>'\"" +
           "/>" +
           "</div>";
       } else {
@@ -1383,6 +1385,7 @@ function applyCredentials(creds) {
           "<div style='position:relative;width:100%;height:100%;'>" +
           "<img src='" + effectiveLogo + "' alt='" + (c.issuer || "") + "'" +
           " style='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:16px;'" +
+          " onerror=\"this.style.display='none'\"" +
           "/>" +
           "</div>";
       }
@@ -1430,12 +1433,13 @@ function applyCredentials(creds) {
       skillsHtml +
       "</div>";
 
+    var cardType = c.type || "";
     var cardAttrs =
       "class='cg-card' data-issuer='" + (c.issuer || "").replace(/'/g, "&apos;") +
       "' data-name='" + (c.title || "").toLowerCase().replace(/'/g, "&apos;") +
       "' data-skills='" + (c.tags || []).join(",") + "'";
     if (c.duration) cardAttrs += " data-duration='" + c.duration + "'";
-    if (c.type)     cardAttrs += " data-type='" + c.type + "'";
+    if (cardType)   cardAttrs += " data-type='" + cardType + "'";
 
     if (c.url) {
       return "<div " + cardAttrs + "><a class='cg-card-link' href='" + c.url + "' rel='noopener noreferrer' target='_blank'>" + inner + "</a></div>";
@@ -1445,20 +1449,19 @@ function applyCredentials(creds) {
 
   // Pre-compute all three filtered arrays (used for both grid rendering AND count sync)
   // ── FIXED FILTERS: use .type as the single source of truth ──────────────
-  // Previously, issuer-name checks pushed 13 type=certificate records
-  // (those with issuer="LinkedIn Learning") into the LinkedIn bucket,
-  // causing the Professional tab to show 42 instead of the correct 55.
-  var credly       = creds.filter(function(c) { return c.type === 'credly' || c.type === 'badge' || (c.credlyBadgeId && c.credlyBadgeId.length > 0); });
+  var credly       = creds.filter(function(c) { return c.type === 'credly' || c.type === 'badge' || (c.credlyBadgeId && c.credlyBadgeId.length > 0 && c.type !== 'certificate' && c.type !== 'linkedin' && c.type !== 'learning-path' && c.type !== 'other'); });
   var professional = creds.filter(function(c) { return c.type === 'certificate'; });
-  var linkedin     = creds.filter(function(c) { return c.type === 'linkedin' || c.type === 'learning-path' || c.type === 'other'; });
+  var learning     = creds.filter(function(c) { return c.type === 'linkedin' || c.type === 'learning-path' || c.type === 'other'; });
 
   // 2. Credly badges grid
   var gridCredly = document.getElementById('grid-credly');
   if (gridCredly) {
     // Normalize Credly fields so buildCard works correctly
     var credlyNorm = credly.map(function(c) {
+      // Always prefer credlyImageUrl (Credly CDN, always fresh) over stored b64 which may be stale
+      var bestLogo = c.credlyImageUrl || c.image || c.logoUpload || c.logo || '';
       return Object.assign({}, c, {
-        logo: c.credlyImageUrl || c.image || c.logoUpload || c.logo || '',
+        logo: bestLogo,
         url:  (c.credlyBadgeId ? 'https://www.credly.com/badges/' + c.credlyBadgeId : '') || c.credlyEarnerUrl || c.url || ''
       });
     });
@@ -1473,17 +1476,17 @@ function applyCredentials(creds) {
       "<div style='font-family:Share Tech Mono,monospace;font-size:11px;color:#3a7a3a;padding:20px;'>No professional certificates found.</div>";
   }
 
-  // 4. LinkedIn Learning grid
+  // 4. Learning certs grid (formerly LinkedIn)
   var gridLI = document.getElementById('grid-linkedin');
   if (gridLI) {
-    gridLI.innerHTML = linkedin.length ? linkedin.map(buildCard).join('') :
-      "<div style='font-family:Share Tech Mono,monospace;font-size:11px;color:#3a7a3a;padding:20px;'>No LinkedIn certificates found.</div>";
+    gridLI.innerHTML = learning.length ? learning.map(buildCard).join('') :
+      "<div style='font-family:Share Tech Mono,monospace;font-size:11px;color:#3a7a3a;padding:20px;'>No learning certificates found.</div>";
   }
 
   // 5. Sync ALL counts everywhere
   var nCredly       = credly.length;
   var nProfessional = professional.length;
-  var nLinkedIn     = linkedin.length;
+  var nLinkedIn     = learning.length;
   var nAll          = nCredly + nProfessional + nLinkedIn;
   var nDomains      = (function() {
     var tags = {};
@@ -1685,7 +1688,8 @@ function applyContact(contact) {
     qsa('.contact-val[data-contact="phone"]').forEach(function(el) { el.textContent = contact.phone; });
   }
   if (contact.linkedin) {
-    qsa('a[href*="linkedin.com"]').forEach(function(a) { a.href = contact.linkedin; });
+    // Only update actual contact links (not the nav LOGIN button)
+    qsa('a[href*="linkedin.com/in"]').forEach(function(a) { a.href = contact.linkedin; });
     qsa('.contact-val[data-contact="linkedin"]').forEach(function(el) { el.textContent = contact.linkedin.replace('https://',''); });
   }
   if (contact.github) {

@@ -1,13 +1,21 @@
-// ── GitHub Storage Layer v2 ───────────────────────────────────────────────────
-// Reads data.json via the GitHub Contents API using the
-// application/vnd.github.raw+json Accept header — this returns the file body
-// directly (no base64 wrapping) AND supports CORS from browser pages.
+// ── GitHub Storage Layer v3 — split-file edition ──────────────────────────────
 //
-// raw.githubusercontent.com does NOT support CORS with Authorization headers
-// from browsers — any fetch() to it with a token throws "Failed to fetch"
-// (CORS preflight blocked). This version avoids that entirely.
+// data.json is now split into 5 smaller files to avoid GitHub's 1 MB base64
+// encoding limit and to keep browser memory usage manageable:
 //
-// Writes still use the standard Contents API (PUT) which requires the SHA.
+//   portfolio/data_main.json        — about, contact, experience, skills, projects, flags
+//   portfolio/data_creds_1.json     — credentials[0..83]
+//   portfolio/data_creds_2.json     — credentials[84..167]
+//   portfolio/data_creds_3.json     — credentials[168..251]
+//   portfolio/data_creds_4.json     — credentials[252..333]
+//
+// Public API is identical to v2 (loadAll, saveSection, testConnection, etc.)
+// so App.jsx requires zero changes.
+//
+// Reads  → all 5 files in parallel via Contents API + raw media type (CORS-safe)
+// Writes → only the affected file is re-uploaded (fast, minimal API calls)
+//
+// ─────────────────────────────────────────────────────────────────────────────
 
 const CONFIG_KEY = 'portfolio_github_config'
 
@@ -17,23 +25,29 @@ export function getGithubConfig() {
     return raw ? JSON.parse(raw) : null
   } catch { return null }
 }
-
 export function saveGithubConfig(owner, repo, token) {
   localStorage.setItem(CONFIG_KEY, JSON.stringify({ owner, repo, token }))
 }
-
 export function clearGithubConfig() {
   localStorage.removeItem(CONFIG_KEY)
 }
 
-// ── URL builders ──────────────────────────────────────────────────────────────
-const DATA_PATH = 'portfolio/data.json'
+// ── File map ─────────────────────────────────────────────────────────────────
+// Which logical sections live in which physical file.
+const MAIN_SECTIONS = ['about', 'contact', 'experience', 'skills', 'projects', 'flags']
+const CRED_FILES    = [
+  'portfolio/data_creds_1.json',
+  'portfolio/data_creds_2.json',
+  'portfolio/data_creds_3.json',
+  'portfolio/data_creds_4.json',
+]
+const MAIN_FILE     = 'portfolio/data_main.json'
+const CRED_CHUNK    = 84   // max credentials per file
 
-function contentsUrl(cfg) {
-  return `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${DATA_PATH}`
+// ── URL builders ─────────────────────────────────────────────────────────────
+function contentsUrl(cfg, path) {
+  return `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}`
 }
-
-// Standard JSON headers (for writes + SHA fetches)
 function apiHeaders(cfg) {
   return {
     'Authorization':        `Bearer ${cfg.token}`,
@@ -42,8 +56,6 @@ function apiHeaders(cfg) {
     'Content-Type':         'application/json',
   }
 }
-
-// Raw-body headers — returns file content directly, no base64, CORS-safe
 function rawHeaders(cfg) {
   return {
     'Authorization':        `Bearer ${cfg.token}`,
@@ -52,90 +64,134 @@ function rawHeaders(cfg) {
   }
 }
 
-// ── Read: Contents API with raw media type ────────────────────────────────────
-// Using Accept: application/vnd.github.raw+json tells GitHub to return the
-// file body as plain text in the response body instead of a JSON envelope
-// with a base64-encoded content field. This:
-//   ✓ Works with CORS from browser pages (unlike raw.githubusercontent.com)
-//   ✓ Avoids the atob() single-call crash on large files
-//   ✓ Streams via ReadableStream + TextDecoder
-async function fetchDataStreaming(cfg) {
-  const r = await fetch(contentsUrl(cfg), {
+// ── Stream-read a single file ─────────────────────────────────────────────────
+async function fetchFileStreaming(cfg, path) {
+  const r = await fetch(contentsUrl(cfg, path), {
     headers: rawHeaders(cfg),
     cache:   'no-store',
   })
-
-  if (r.status === 404) return {}
+  if (r.status === 404) return null
   if (!r.ok) {
     const msg = await r.text().catch(() => r.status)
-    throw new Error(`GitHub read failed: ${msg}`)
+    throw new Error(`GitHub read failed (${path}): ${msg}`)
   }
-
-  // Stream in 64 KB chunks — never blocks the main thread on large files
   const decoder = new TextDecoder('utf-8')
   const reader  = r.body.getReader()
   const parts   = []
-
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
     parts.push(decoder.decode(value, { stream: true }))
   }
-  parts.push(decoder.decode()) // flush
-
+  parts.push(decoder.decode())
   return JSON.parse(parts.join(''))
 }
 
-// ── Fetch only the SHA (standard JSON envelope, tiny response) ────────────────
-async function fetchSha(cfg) {
-  const r = await fetch(contentsUrl(cfg), {
-    headers: apiHeaders(cfg),
-  })
+// ── Fetch SHA for a single file ───────────────────────────────────────────────
+async function fetchSha(cfg, path) {
+  const r = await fetch(contentsUrl(cfg, path), { headers: apiHeaders(cfg) })
   if (r.status === 404) return null
   if (!r.ok) {
     const err = await r.json().catch(() => ({}))
-    throw new Error(`GitHub SHA fetch failed: ${err.message || r.status}`)
+    throw new Error(`GitHub SHA fetch failed (${path}): ${err.message || r.status}`)
   }
   const meta = await r.json()
   return meta.sha
 }
 
-// ── Write: PUT the full file back ─────────────────────────────────────────────
-async function writeFile(cfg, data, sha) {
+// ── Write a single file ───────────────────────────────────────────────────────
+async function writeFile(cfg, path, data, sha) {
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))))
   const body = {
     message: `chore: update portfolio data [skip ci]`,
     content: encoded,
     ...(sha ? { sha } : {}),
   }
-  const r = await fetch(contentsUrl(cfg), {
+  const r = await fetch(contentsUrl(cfg, path), {
     method:  'PUT',
     headers: apiHeaders(cfg),
     body:    JSON.stringify(body),
   })
   if (!r.ok) {
     const err = await r.json().catch(() => ({}))
-    throw new Error(`GitHub write failed: ${err.message || r.status}`)
+    throw new Error(`GitHub write failed (${path}): ${err.message || r.status}`)
   }
   const res = await r.json()
   return res.content.sha
 }
 
-// ── Cached SHA ────────────────────────────────────────────────────────────────
-let _sha = null
+// ── Split credentials into chunks ─────────────────────────────────────────────
+function splitCredentials(allCreds) {
+  const chunks = []
+  for (let i = 0; i < CRED_FILES.length; i++) {
+    chunks.push(allCreds.slice(i * CRED_CHUNK, (i + 1) * CRED_CHUNK))
+  }
+  return chunks
+}
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
+// ── Load all data (parallel) ──────────────────────────────────────────────────
 export async function loadAll(defaults) {
   const cfg = getGithubConfig()
   if (!cfg?.token) return defaults
+
   try {
-    const content = await fetchDataStreaming(cfg)
-    fetchSha(cfg).then(sha => { _sha = sha }).catch(() => {})
-    return { ...defaults, ...content }
+    // Fetch all 5 files simultaneously
+    const [mainData, ...credDatas] = await Promise.all([
+      fetchFileStreaming(cfg, MAIN_FILE),
+      ...CRED_FILES.map(f => fetchFileStreaming(cfg, f).catch(() => null)),
+    ])
+
+    // Merge credentials from all chunk files
+    const allCreds = []
+    credDatas.forEach(cd => {
+      if (cd && Array.isArray(cd.credentials)) allCreds.push(...cd.credentials)
+    })
+
+    return {
+      ...defaults,
+      ...(mainData || {}),
+      credentials: allCreds.length ? allCreds : (defaults.credentials || []),
+    }
   } catch (e) {
     console.error('[GitHub] loadAll failed:', e.message)
     return defaults
+  }
+}
+
+// ── Save a single section ─────────────────────────────────────────────────────
+// • For any main section (about/contact/skills// ─  …experience/projects/flags): read+update data_main.json only
+// • For credentials: read all credential files, merge, re-split, rewrite all 4
+
+export async function saveSection(section, value) {
+  const cfg = getGithubConfig()
+  if (!cfg?.token) throw new Error('GitHub not configured')
+
+  try {
+    if (MAIN_SECTIONS.includes(section)) {
+      // ── Fast path: only touch data_main.json ──────────────────────────────
+      const [mainData, sha] = await Promise.all([
+        fetchFileStreaming(cfg, MAIN_FILE),
+        fetchSha(cfg, MAIN_FILE),
+      ])
+      const updated = { ...(mainData || {}), [section]: value }
+      await writeFile(cfg, MAIN_FILE, updated, sha)
+
+    } else if (section === 'credentials') {
+      // ── Credential path: re-split and write all 4 credential files ────────
+      const chunks = splitCredentials(value)
+      // Fetch all SHAs in parallel (needed for update)
+      const shas = await Promise.all(CRED_FILES.map(f => fetchSha(cfg, f)))
+      // Write all 4 files in parallel
+      await Promise.all(CRED_FILES.map((f, i) =>
+        writeFile(cfg, f, { credentials: chunks[i] || [] }, shas[i])
+      ))
+
+    } else {
+      throw new Error(`Unknown section: "${section}"`)
+    }
+  } catch (e) {
+    console.error('[GitHub] saveSection error:', e.message)
+    throw new Error(`Save failed for "${section}": ${e.message}`)
   }
 }
 
@@ -143,25 +199,17 @@ export async function loadSection(section, fallback) {
   const cfg = getGithubConfig()
   if (!cfg?.token) return fallback
   try {
-    const content = await fetchDataStreaming(cfg)
-    return content[section] ?? fallback
+    if (MAIN_SECTIONS.includes(section)) {
+      const data = await fetchFileStreaming(cfg, MAIN_FILE)
+      return data?.[section] ?? fallback
+    } else if (section === 'credentials') {
+      const datas = await Promise.all(CRED_FILES.map(f => fetchFileStreaming(cfg, f).catch(() => null)))
+      const all = []
+      datas.forEach(d => { if (d && Array.isArray(d.credentials)) all.push(...d.credentials) })
+      return all.length ? all : fallback
+    }
+    return fallback
   } catch { return fallback }
-}
-
-export async function saveSection(section, value) {
-  const cfg = getGithubConfig()
-  if (!cfg?.token) throw new Error('GitHub not configured')
-  try {
-    const [content, sha] = await Promise.all([
-      fetchDataStreaming(cfg),
-      fetchSha(cfg),
-    ])
-    const updated = { ...content, [section]: value }
-    _sha = await writeFile(cfg, updated, sha)
-  } catch (e) {
-    console.error('[GitHub] saveSection error:', e.message)
-    throw new Error(`Save failed for "${section}": ${e.message}`)
-  }
 }
 
 export async function testConnection(owner, repo, token) {
@@ -187,9 +235,9 @@ export async function testConnection(owner, repo, token) {
       return { ok: false, msg: 'Token has read access but no write permission to this repo.' }
     }
 
-    // Step 2: verify data.json is reachable via Contents API (CORS-safe)
+    // Step 2: verify data_main.json is reachable
     const fileR = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${DATA_PATH}`,
+      `https://api.github.com/repos/${owner}/${repo}/contents/${MAIN_FILE}`,
       {
         method: 'HEAD',
         headers: {
@@ -200,15 +248,14 @@ export async function testConnection(owner, repo, token) {
       }
     )
     if (fileR.status === 404) {
-      return { ok: false, msg: `Repo accessible but ${DATA_PATH} not found. Check the file exists on the main branch.` }
+      return { ok: false, msg: `Repo accessible but ${MAIN_FILE} not found. Did you upload the split data files?` }
     }
     if (!fileR.ok) {
-      return { ok: false, msg: `Could not access ${DATA_PATH}: HTTP ${fileR.status}` }
+      return { ok: false, msg: `Could not access ${MAIN_FILE}: HTTP ${fileR.status}` }
     }
 
     return { ok: true }
   } catch (e) {
-    // Network-level error (CORS, offline, DNS)
     return { ok: false, msg: `Network error: ${e.message}. Check your token and repo name.` }
   }
 }

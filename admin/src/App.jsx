@@ -931,7 +931,7 @@ function CredentialsSection({ data, onSave }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         {(c.logo || (c.issuer === 'LinkedIn Learning' || c.issuer === 'LinkedIn')) && (
                           <img
-                            src={c.logo || 'https://media.licdn.com/dms/image/C560BAQHaVYd13rRz3A/company-logo_200_200/0/1638831590136/linkedin_learning_logo/linkedin_learning_logo.png'}
+                            src={c.logo || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjEyIiBmaWxsPSIjMGE2NmMyIi8+CiAgPGNpcmNsZSBjeD0iMzAiIGN5PSIzNSIgcj0iOCIgZmlsbD0id2hpdGUiLz4KICA8cmVjdCB4PSIyMiIgeT0iNDgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIzNiIgcng9IjIiIGZpbGw9IndoaXRlIi8+CiAgPHJlY3QgeD0iNDQiIHk9IjQ4IiB3aWR0aD0iMTYiIGhlaWdodD0iMzYiIHJ4PSIyIiBmaWxsPSJ3aGl0ZSIvPgogIDxwYXRoIGQ9Ik02MCA2MCBRNjAgNDggNzIgNDggUTg0IDQ4IDg0IDYwIEw4NCA4NCBMNjggODQgTDY4IDYyIFE2OCA1OCA2NCA1OCBRNjAgNTggNjAgNjIgWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+'}
                             alt=""
                             style={{ width: 28, height: 28, objectFit: 'contain', border: '1px solid var(--bd)', background: 'var(--bg2)', padding: 2 }}
                             onError={e => e.target.style.display = 'none'}

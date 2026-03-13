@@ -12,11 +12,12 @@
   <meta property="og:type" content="website"/>
   <meta property="og:url" content="https://mohamedaasiq.github.io"/>
   <meta property="og:site_name" content="Mohamed Aasiq"/>
+  <meta property="og:image" content="https://mohamedaasiq.github.io/preview.png"/>
   <meta name="twitter:card" content="summary_large_image"/>
-  <meta name="twitter:image" content="https://mohamedaasiq.github.io"/>
+  <meta name="twitter:image" content="https://mohamedaasiq.github.io/preview.png"/>
   <meta name="twitter:title" content="Mohamed Aasiq | Cybersecurity Specialist &amp; Ethical Hacker"/>
   <meta name="twitter:description" content="Mohamed Aasiq - Cybersecurity Specialist, Ethical Hacker, Network Defense &amp; Penetration Testing Expert. 334+ Certifications."/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:;"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https: wss:;"/>
   <link rel="dns-prefetch" href="https://fonts.googleapis.com"/>
   <link rel="dns-prefetch" href="https://img.icons8.com"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -743,6 +744,13 @@ window.switchTab = function(tab, btn) {
   document.querySelectorAll('.cg-tab').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   _cgIssuer = '';
+  // Show/hide entire folder subsections based on tab
+  var subCredly  = document.getElementById('sub-credly');
+  var subPro     = document.getElementById('sub-professional');
+  var subLinkedIn= document.getElementById('sub-linkedin');
+  if (subCredly)   subCredly.style.display   = (tab === 'all' || tab === 'professional') ? '' : 'none';
+  if (subPro)      subPro.style.display      = (tab === 'all' || tab === 'professional') ? '' : 'none';
+  if (subLinkedIn) subLinkedIn.style.display = (tab === 'all' || tab === 'linkedin')     ? '' : 'none';
   cgApply();
 };
 
@@ -760,7 +768,7 @@ window.cgApply = function() {
     var n      = (card.getAttribute('data-name')||'').toLowerCase();
     var iss    = card.getAttribute('data-issuer')||'';
     var type   = card.getAttribute('data-type')||'';
-    var isLinkedIn    = (type === 'linkedin' || type === 'learning-path' || iss === 'LinkedIn');
+    var isLinkedIn    = (type === 'linkedin' || type === 'learning-path' || type === 'other' || iss === 'LinkedIn');
     var isCredly      = (type === 'badge' || type === 'credly');
     var isProfessional = !isLinkedIn && !isCredly;
 
@@ -895,7 +903,7 @@ function estimateDuration(name) {
 </section>
 
 
-<section class='alt-bg' id='experience'>
+<section id='experience'>
   <div class='section-inner'>
     <div class='section-cmd'>root@kali:~# cat /var/log/experience.log</div>
     <h2 class='section-title'>// EXPERIENCE</h2>
@@ -1034,8 +1042,11 @@ setInterval(updateTime, 1000); updateTime();
     const container = document.getElementById(id);
     if(!container) return;
     const el = container.querySelector('.glitch-wrap') || container;
-    const orig = el.textContent.trim();
-    setInterval(()=> glitch(el, orig), 4000 + Math.random()*2000);
+    // Re-read current textContent each time so dynamically loaded names aren't overwritten
+    setInterval(()=> {
+      var currentText = el.textContent.trim();
+      if (currentText) glitch(el, currentText);
+    }, 4000 + Math.random()*2000);
   });
 })();
 
@@ -1188,10 +1199,11 @@ function applySkills(skills) {
   }
 
   // Sync stat-domains: count unique skill categories as domain count
+  // Only update if credentials haven't set a more accurate domain count yet
   var domainCount = skills.length;
   if (domainCount > 0) {
     var domainStatEl = document.getElementById('stat-domains');
-    if (domainStatEl) {
+    if (domainStatEl && !domainStatEl.getAttribute('data-from-credentials')) {
       var dFrom = parseInt(domainStatEl.textContent) || 0;
       var dStart = Date.now(), dDur = 1400;
       (function animateDomains() {
@@ -1258,8 +1270,8 @@ function applyCredentials(creds) {
 
   // Pre-compute all three filtered arrays (used for both grid rendering AND count sync)
   var credly = creds.filter(function(c) { return c.type === 'badge' || c.type === 'credly' || (c.credlyBadgeId && c.credlyBadgeId.length > 0); });
-  var professional = creds.filter(function(c) { return c.type !== 'linkedin' && c.type !== 'learning-path' && c.issuer !== 'LinkedIn' && c.type !== 'credly' && c.type !== 'badge' && !(c.credlyBadgeId && c.credlyBadgeId.length > 0); });
-  var linkedin = creds.filter(function(c) { return c.type === 'linkedin' || c.type === 'learning-path' || c.issuer === 'LinkedIn'; });
+  var professional = creds.filter(function(c) { return c.type !== 'linkedin' && c.type !== 'learning-path' && c.type !== 'other' && c.issuer !== 'LinkedIn' && c.type !== 'credly' && c.type !== 'badge' && !(c.credlyBadgeId && c.credlyBadgeId.length > 0); });
+  var linkedin = creds.filter(function(c) { return c.type === 'linkedin' || c.type === 'learning-path' || c.type === 'other' || c.issuer === 'LinkedIn'; });
 
   // 2. Credly badges grid
   var gridCredly = document.getElementById('grid-credly');
@@ -1268,7 +1280,7 @@ function applyCredentials(creds) {
     var credlyNorm = credly.map(function(c) {
       return Object.assign({}, c, {
         logo: c.credlyImageUrl || c.image || c.logo || '',
-        url:  c.credlyEarnerUrl || c.url || ''
+        url:  (c.credlyBadgeId ? 'https://www.credly.com/badges/' + c.credlyBadgeId : '') || c.credlyEarnerUrl || c.url || ''
       });
     });
     gridCredly.innerHTML = credlyNorm.length ? credlyNorm.map(buildCard).join('') :
@@ -1347,6 +1359,7 @@ function applyCredentials(creds) {
   // Hero stat-domains: animate to real domain count (from credential tags)
   var domStatEl = document.getElementById('stat-domains');
   if (domStatEl && nDomains > 0) {
+    domStatEl.setAttribute('data-from-credentials', '1'); // mark as authoritative
     var dFrom = parseInt(domStatEl.textContent) || 0;
     var dStart = Date.now(), dDur = 1400;
     (function animateDomainsC() {
@@ -1398,14 +1411,14 @@ function applyExperience(experience) {
   if (!timeline) return;
   if (!experience || !experience.length) return;
 
-  // Sync stat-yrs: sum years from all experience entries
-  var totalYears = 0;
+  // Sync stat-yrs: career span from earliest start date to present
+  var earliestStart = 0;
   var currentYear = new Date().getFullYear();
   experience.forEach(function(exp) {
     var start = exp.startDate ? parseInt(exp.startDate) : 0;
-    var end = exp.current ? currentYear : (exp.endDate ? parseInt(exp.endDate) : currentYear);
-    if (start && end >= start) totalYears = Math.max(totalYears, end - start);
+    if (start && (!earliestStart || start < earliestStart)) earliestStart = start;
   });
+  var totalYears = earliestStart ? (currentYear - earliestStart) : 0;
   if (totalYears > 0) {
     var yrsEl = document.getElementById('stat-yrs');
     if (yrsEl) {
@@ -1574,3 +1587,19 @@ else { loadAll(); connectRealtime(); }
 
   <!-- LinkedIn Course Completion Badge Replacement -->
   <script>  (function(){
+  // LinkedIn badge replacement: replace embedded badge iframes with clean links
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('iframe[src*="linkedin.com/badges"]').forEach(function(iframe) {
+      var link = document.createElement('a');
+      link.href = iframe.src;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'View LinkedIn Badge';
+      link.style.cssText = 'color:#0077b5;font-family:Share Tech Mono,monospace;font-size:11px;';
+      iframe.parentNode.replaceChild(link, iframe);
+    });
+  });
+  })();
+  </script>
+</body>
+</html>

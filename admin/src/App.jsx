@@ -585,6 +585,7 @@ function Dashboard({ data, lastSync, sbCfg }) {
 function AboutSection({ data, onSave }) {
   const [d, setD] = useState(data||{})
   const [saving, setSaving] = useState(false)
+  useEffect(()=>{ setD(data||{}) }, [data])
   const [saved, setSaved] = useState(false)
   const u = k => e => setD(p=>({...p,[k]:e.target.value}))
   const handleSave = async () => {
@@ -655,6 +656,7 @@ function SkillsSection({ data, onSave }) {
   const [form, setForm]       = useState({})
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving]   = useState(false)
+  useEffect(()=>{ setCats(data||[]) }, [data])
   const commit = async updated => { setCats(updated); setSaving(true); await onSave(updated); setSaving(false) }
   const levelPct = {Beginner:25,Intermediate:55,Advanced:80,Expert:100}
 
@@ -802,6 +804,7 @@ function CredentialsSection({ data, onSave }) {
   const [confirm, setConfirm] = useState(null)
   const [search, setSearch]   = useState('')
   const [saving, setSaving]   = useState(false)
+  useEffect(()=>{ setCreds(data||[]) }, [data])
 
   const commit = async u => { setCreds(u); setSaving(true); await onSave(u); setSaving(false) }
 
@@ -1154,6 +1157,7 @@ function ProjectsSection({ data, onSave }) {
   const [form, setForm]       = useState({})
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving]   = useState(false)
+  useEffect(()=>{ setItems(data||[]) }, [data])
   const commit = async u => { setItems(u); setSaving(true); await onSave(u); setSaving(false) }
   const open   = (id=null) => { setForm(id?{...items.find(p=>p.id===id)}:BLANK_PROJ()); setModal(id||'new') }
   const save   = async () => { await commit(modal==='new'?[...items,form]:items.map(p=>p.id===modal?form:p)); setModal(null) }
@@ -1236,6 +1240,7 @@ function FlagsSection({ data, onSave }) {
   const [form, setForm]     = useState({})
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving] = useState(false)
+  useEffect(()=>{ setItems(data||[]) }, [data])
   const commit = async u => { setItems(u); setSaving(true); await onSave(u); setSaving(false) }
   const open   = (id=null) => { setForm(id?{...items.find(f=>f.id===id)}:BLANK_FLAG()); setModal(id||'new') }
   const save   = async () => { await commit(modal==='new'?[...items,form]:items.map(f=>f.id===modal?form:f)); setModal(null) }
@@ -1316,6 +1321,7 @@ function ExperienceSection({ data, onSave }) {
   const [form, setForm]       = useState({})
   const [confirm, setConfirm] = useState(null)
   const [saving, setSaving]   = useState(false)
+  useEffect(()=>{ setItems(data||[]) }, [data])
   const commit = async u => { setItems(u); setSaving(true); await onSave(u); setSaving(false) }
   const open   = (id=null) => { setForm(id?{...items.find(e=>e.id===id)}:BLANK_EXP()); setModal(id||'new') }
   const save   = async () => { await commit(modal==='new'?[...items,form]:items.map(e=>e.id===modal?form:e)); setModal(null) }
@@ -1407,6 +1413,7 @@ function ContactSection({ data, onSave }) {
   const [d, setD]     = useState(data||{})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
+  useEffect(()=>{ setD(data||{}) }, [data])
   const u = k => e => setD(p=>({...p,[k]:e.target.value}))
   const handleSave = async () => { setSaving(true); await onSave(d); setSaving(false); setSaved(true); setTimeout(()=>setSaved(false),2000) }
   return (
@@ -1524,6 +1531,7 @@ const DEFAULTS = {
   skills:      [],
   credentials: [],
   projects:    [],
+  flags:       [],
   experience:  [],
   contact:     {email:'',phone:''},
 }

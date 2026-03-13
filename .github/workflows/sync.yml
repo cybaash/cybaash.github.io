@@ -113,7 +113,7 @@ jobs:
         id: npm-cache
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-${{ hashFiles('admin/package-lock.json') }}
+          key: npm-${{ runner.os }}-${{ hashFiles('admin/package.json') }}
           restore-keys: |
             npm-${{ runner.os }}-
 
@@ -130,7 +130,9 @@ jobs:
 
       - name: Install admin dependencies
         working-directory: admin
-        run: npm ci --prefer-offline
+        # npm ci requires package-lock.json — use npm install instead which
+        # works with or without a lockfile and generates one if missing.
+        run: npm install --no-audit --no-fund --prefer-offline
 
       - name: Build admin panel (Vite)
         working-directory: admin

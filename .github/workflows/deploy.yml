@@ -1,4 +1,4 @@
-name: Deploy Portfolio OS to GitHub Pages
+name: Deploy AASIQ OS to GitHub Pages
 
 on:
   push:

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig, resetClient,
+  getGithubConfig, saveGithubConfig, clearGithubConfig, resetClient,
   loadAll, saveSection, subscribeToChanges, testConnection
-} from './supabase.js'
+} from './github.js'
 
 // ── Fonts ──────────────────────────────────────────────────────────────────
 const FontLink = () => (
@@ -392,33 +392,33 @@ function SyncToast({ state }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// SETUP WIZARD (first run — no Supabase config yet)
+// SETUP WIZARD (first run — no GitHub config yet)
 // ══════════════════════════════════════════════════════════════════════════
 function SetupWizard({ onComplete }) {
-  const [step, setStep]   = useState(0) // 0=intro, 1=supabase, 2=password, 3=done
-  const [url, setUrl]     = useState('')
-  const [key, setKey]     = useState('')
+  const [step, setStep]       = useState(0) // 0=intro, 1=github, 2=password, 3=done
+  const [owner, setOwner]     = useState('')
+  const [repo, setRepo]       = useState('')
+  const [token, setToken]     = useState('')
   const [testing, setTesting] = useState(false)
-  const [err, setErr]     = useState('')
-  const [ok, setOk]       = useState(false)
-  // SECURITY FIX: password is created during setup instead of being hardcoded
-  const [newPw, setNewPw]   = useState('')
-  const [confPw, setConfPw] = useState('')
-  const [pwErr, setPwErr]   = useState('')
+  const [err, setErr]         = useState('')
+  const [ok, setOk]           = useState(false)
+  const [newPw, setNewPw]     = useState('')
+  const [confPw, setConfPw]   = useState('')
+  const [pwErr, setPwErr]     = useState('')
 
   const testAndSave = async () => {
     setTesting(true); setErr(''); setOk(false)
-    const result = await testConnection(url.trim(), key.trim())
+    const result = await testConnection(owner.trim(), repo.trim(), token.trim())
     setTesting(false)
     if (!result.ok) { setErr('Connection failed: ' + result.msg); return }
-    saveSupabaseConfig(url.trim(), key.trim())
+    saveGithubConfig(owner.trim(), repo.trim(), token.trim())
     setOk(true)
-    setTimeout(() => { setStep(2) }, 1200)
+    setTimeout(() => setStep(2), 1200)
   }
 
   const savePassword = () => {
-    if (newPw.length < 8)          { setPwErr('Password must be at least 8 characters'); return }
-    if (newPw !== confPw)           { setPwErr('Passwords do not match'); return }
+    if (newPw.length < 8)            { setPwErr('Password must be at least 8 characters'); return }
+    if (newPw !== confPw)            { setPwErr('Passwords do not match'); return }
     if (!/[^a-zA-Z0-9]/.test(newPw)) { setPwErr('Include at least one special character (e.g. @, !, #)'); return }
     setAdminPw(newPw)
     setPwErr('')
@@ -435,7 +435,7 @@ function SetupWizard({ onComplete }) {
           <div className="auth-logo">
             <div className="auth-logo-icon">⬡</div>
             <div className="auth-logo-title">PORTFOLIO OS</div>
-            <div className="auth-logo-sub">FIRST RUN SETUP · v3.0</div>
+            <div className="auth-logo-sub">FIRST RUN SETUP · v4.0</div>
           </div>
 
           <div className="step-indicator">
@@ -448,11 +448,15 @@ function SetupWizard({ onComplete }) {
             <div>
               <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:12,color:'var(--g)',letterSpacing:2,marginBottom:16}}>WELCOME TO PORTFOLIO OS</div>
               <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.7,marginBottom:20}}>
-                This admin panel uses <strong style={{color:'var(--g)'}}>Supabase</strong> to store your portfolio data — so any device, any browser, anywhere in the world sees the same content in real-time.
+                Your portfolio data lives in <strong style={{color:'var(--g)'}}>data.json</strong> directly in your GitHub repo — no database needed. The admin panel reads and writes it via the GitHub API using a Personal Access Token stored only in your browser.
               </p>
               <div style={{background:'var(--bg2)',border:'1px solid var(--bd)',padding:16,marginBottom:20,fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>
                 <div style={{color:'var(--g)',marginBottom:10,letterSpacing:2}}>WHAT YOU NEED:</div>
-                {['A free Supabase account at supabase.com','A project with the portfolio_data table (SQL below)','Your Project URL + anon public key'].map((s,i)=>(
+                {[
+                  'Your GitHub username and repo name (e.g. cybaash / cybaash.github.io)',
+                  'A Personal Access Token with Contents read+write permission',
+                  'Go to GitHub → Settings → Developer settings → Fine-grained tokens',
+                ].map((s,i)=>(
                   <div key={i} style={{color:'var(--tx2)',marginBottom:6,display:'flex',gap:8}}>
                     <span style={{color:'var(--g3)'}}>{'>'}</span>{s}
                   </div>
@@ -466,52 +470,31 @@ function SetupWizard({ onComplete }) {
 
           {step===1 && (
             <div>
-              <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:12,color:'var(--g)',letterSpacing:2,marginBottom:16}}>STEP 1 — SUPABASE CONFIG</div>
-
-              {/* SQL snippet */}
-              <div style={{background:'var(--bg)',border:'1px solid var(--bd)',padding:14,marginBottom:20,borderRadius:0}}>
-                <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'var(--tx3)',letterSpacing:2,marginBottom:8}}>RUN THIS SQL IN SUPABASE → SQL EDITOR</div>
-                <pre style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:'var(--g2)',lineHeight:1.6,whiteSpace:'pre-wrap',userSelect:'all'}}>
-{`create table if not exists portfolio_data (
-  id text primary key,
-  data jsonb not null default '{}',
-  updated_at timestamptz default now()
-);
-
--- Public read (portfolio visitors)
-alter table portfolio_data enable row level security;
-create policy "public_read" on portfolio_data
-  for select using (true);
-
--- Allow all writes (admin auth is handled by app)
-create policy "admin_write" on portfolio_data
-  for all using (true) with check (true);
-
--- Enable realtime
-alter publication supabase_realtime add table portfolio_data;`}
-                </pre>
-                <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={()=>navigator.clipboard?.writeText(`create table if not exists portfolio_data (\n  id text primary key,\n  data jsonb not null default '{}',\n  updated_at timestamptz default now()\n);\nalter table portfolio_data enable row level security;\ncreate policy "public_read" on portfolio_data for select using (true);\ncreate policy "admin_write" on portfolio_data for all using (true) with check (true);\nalter publication supabase_realtime add table portfolio_data;`)}>
-                  Copy SQL
-                </button>
-              </div>
+              <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:12,color:'var(--g)',letterSpacing:2,marginBottom:16}}>STEP 1 — GITHUB CONFIG</div>
 
               {err && <div className="auth-error">⚠ {err}</div>}
               {ok  && <div className="auth-success">✓ Connected successfully!</div>}
 
               <div className="form-group">
-                <label className="form-label">Project URL</label>
-                <input className="form-input" value={url} onChange={e=>setUrl(e.target.value)}
-                  placeholder="https://xxxxxxxxxxxx.supabase.co"/>
-                <div className="form-hint">Settings → API → Project URL</div>
+                <label className="form-label">GitHub Username</label>
+                <input className="form-input" value={owner} onChange={e=>setOwner(e.target.value)}
+                  placeholder="cybaash"/>
+                <div className="form-hint">Your GitHub username (not email)</div>
               </div>
               <div className="form-group">
-                <label className="form-label">Anon Public Key</label>
-                <input className="form-input" value={key} onChange={e=>setKey(e.target.value)}
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."/>
-                <div className="form-hint">Settings → API → Project API Keys → anon public</div>
+                <label className="form-label">Repository Name</label>
+                <input className="form-input" value={repo} onChange={e=>setRepo(e.target.value)}
+                  placeholder="cybaash.github.io"/>
+                <div className="form-hint">The repo where your portfolio lives</div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Personal Access Token</label>
+                <input className="form-input" type="password" value={token} onChange={e=>setToken(e.target.value)}
+                  placeholder="github_pat_..."/>
+                <div className="form-hint">GitHub → Settings → Developer settings → Fine-grained tokens → Contents: read+write</div>
               </div>
               <button className="btn btn-green" style={{width:'100%',justifyContent:'center'}}
-                onClick={testAndSave} disabled={testing||!url||!key}>
+                onClick={testAndSave} disabled={testing||!owner||!repo||!token}>
                 {testing ? '⟳ TESTING CONNECTION...' : '▶ TEST & SAVE'}
               </button>
             </div>
@@ -521,7 +504,7 @@ alter publication supabase_realtime add table portfolio_data;`}
             <div>
               <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:12,color:'var(--g)',letterSpacing:2,marginBottom:16}}>STEP 2 — SET ADMIN PASSWORD</div>
               <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.7,marginBottom:20}}>
-                Create a strong password for the admin panel. This is stored locally in your browser and is never sent to Supabase.
+                Create a strong password for the admin panel. This is stored locally in your browser only.
               </p>
               {pwErr && <div className="auth-error">⚠ {pwErr}</div>}
               <div className="form-group">
@@ -545,7 +528,7 @@ alter publication supabase_realtime add table portfolio_data;`}
             <div style={{textAlign:'center'}}>
               <div style={{fontSize:48,marginBottom:16}}>✓</div>
               <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:14,color:'var(--g)',letterSpacing:2,marginBottom:12}}>SETUP COMPLETE</div>
-              <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.7,marginBottom:24}}>Supabase is connected and your password is set. Click below to log in.</p>
+              <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.7,marginBottom:24}}>GitHub is connected and your password is set. Click below to log in.</p>
               <button className="btn btn-green" style={{width:'100%',justifyContent:'center'}} onClick={onComplete}>
                 ▶ GO TO LOGIN
               </button>
@@ -602,7 +585,7 @@ function Login({ onAuth }) {
 // ══════════════════════════════════════════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════════════════════════════════════════
-function Dashboard({ data, lastSync, sbCfg }) {
+function Dashboard({ data, lastSync, ghCfg }) {
   const counts = {
     skills: data.skills?.reduce((a,c)=>a+(c.items?.length||0),0)||0,
     credentials: data.credentials?.length||0,
@@ -631,10 +614,10 @@ function Dashboard({ data, lastSync, sbCfg }) {
           <div className="card-corner bl"/><div className="card-corner br"/>
           <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:'var(--g)',letterSpacing:2,marginBottom:16}}>RECENT ACTIVITY</div>
           {[
-            {color:'var(--g)',    text:'Admin panel connected',       time:now()},
-            {color:'var(--blue)',text:'Supabase realtime active',     time:now()},
-            {color:'var(--amber)',text:`${counts.credentials} credentials loaded`,time:now()},
-            {color:'var(--g)',   text:`Last sync: ${lastSync||'—'}`, time:''},
+            {color:'var(--g)',    text:'Admin panel connected',              time:now()},
+            {color:'var(--blue)',text:'GitHub storage active',               time:now()},
+            {color:'var(--amber)',text:`${counts.credentials} credentials loaded`, time:now()},
+            {color:'var(--g)',   text:`Last sync: ${lastSync||'—'}`,        time:''},
           ].map((a,i)=>(
             <div className="activity-item" key={i}>
               <div className="activity-dot" style={{background:a.color,boxShadow:`0 0 6px ${a.color}`}}/>
@@ -650,11 +633,10 @@ function Dashboard({ data, lastSync, sbCfg }) {
           <div className="card-corner bl"/><div className="card-corner br"/>
           <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:'var(--g)',letterSpacing:2,marginBottom:16}}>SYSTEM STATUS</div>
           {[
-            {label:'Storage',   val:'Supabase (cloud)',    ok:true},
-            {label:'Realtime',  val:'Subscribed',          ok:true},
-            {label:'Access',    val:'Admin write / Public read', ok:true},
-            {label:'Last Save', val:lastSync||'—',         ok:!!lastSync},
-            {label:'Project',   val:sbCfg?.url?.split('//')[1]?.split('.')[0]||'—', ok:true},
+            {label:'Storage',   val:'GitHub (data.json)',              ok:true},
+            {label:'Access',    val:'Token (local only)',               ok:true},
+            {label:'Repo',      val:ghCfg ? `${ghCfg.owner}/${ghCfg.repo}` : '—', ok:!!ghCfg},
+            {label:'Last Save', val:lastSync||'—',                     ok:!!lastSync},
           ].map(s=>(
             <div key={s.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid rgba(26,46,28,.4)'}}>
               <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:'var(--tx3)',letterSpacing:1}}>{s.label}</span>
@@ -1609,25 +1591,25 @@ function ContactSection({ data, onSave }) {
 // ══════════════════════════════════════════════════════════════════════════
 // SETTINGS
 // ══════════════════════════════════════════════════════════════════════════
-function SettingsSection({ data, sbCfg, onDisconnect }) {
+function SettingsSection({ data, ghCfg, onDisconnect }) {
   const [pwd, setPwd] = useState({old:'',newP:'',confirm:''})
   const [msg, setMsg] = useState(null)
   const [testMsg, setTestMsg] = useState(null)
   const [testing, setTesting] = useState(false)
 
   const changePassword = () => {
-    if (pwd.old!==getAdminPw())       { setMsg({err:true,txt:'Current password incorrect'}); return }
-    if (pwd.newP!==pwd.confirm)       { setMsg({err:true,txt:'Passwords do not match'}); return }
-    if (pwd.newP.length<6)            { setMsg({err:true,txt:'Minimum 6 characters'}); return }
+    if (pwd.old!==getAdminPw())        { setMsg({err:true,txt:'Current password incorrect'}); return }
+    if (pwd.newP!==pwd.confirm)        { setMsg({err:true,txt:'Passwords do not match'}); return }
+    if (pwd.newP.length<6)             { setMsg({err:true,txt:'Minimum 6 characters'}); return }
     setAdminPw(pwd.newP)
     setMsg({err:false,txt:'✓ Password updated'}); setPwd({old:'',newP:'',confirm:''})
   }
 
   const testConn = async () => {
     setTesting(true); setTestMsg(null)
-    const r = await testConnection(sbCfg.url, sbCfg.anonKey)
+    const r = await testConnection(ghCfg?.owner, ghCfg?.repo, ghCfg?.token)
     setTesting(false)
-    setTestMsg(r.ok?{ok:true,txt:'✓ Supabase connection healthy'}:{ok:false,txt:'⚠ '+r.msg})
+    setTestMsg(r.ok ? {ok:true,txt:'✓ GitHub connection healthy'} : {ok:false,txt:'⚠ '+r.msg})
   }
 
   const exportData = () => {
@@ -1654,9 +1636,14 @@ function SettingsSection({ data, sbCfg, onDisconnect }) {
         <div className="card">
           <div className="card-corner tl"/><div className="card-corner tr"/>
           <div className="card-corner bl"/><div className="card-corner br"/>
-          <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'var(--g)',letterSpacing:2,marginBottom:14}}>SUPABASE CONNECTION</div>
+          <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'var(--g)',letterSpacing:2,marginBottom:14}}>GITHUB CONNECTION</div>
           {testMsg&&<div style={{padding:'10px 14px',border:`1px solid ${testMsg.ok?'var(--g)':'var(--amber)'}`,color:testMsg.ok?'var(--g)':'var(--amber)',fontFamily:"'Share Tech Mono',monospace",fontSize:11,marginBottom:14}}>{testMsg.txt}</div>}
-          {[{l:'Project URL',v:sbCfg?.url||'—'},{l:'Key',v:sbCfg?.anonKey?.slice(0,24)+'…'||'—'},{l:'Table',v:'portfolio_data'},{l:'Realtime',v:'Enabled'}].map(i=>(
+          {[
+            {l:'Owner',  v: ghCfg?.owner||'—'},
+            {l:'Repo',   v: ghCfg?.repo||'—'},
+            {l:'Token',  v: ghCfg?.token ? ghCfg.token.slice(0,16)+'…' : '—'},
+            {l:'File',   v: 'portfolio/data.json'},
+          ].map(i=>(
             <div key={i.l} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid rgba(26,46,28,.4)'}}>
               <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:'var(--tx3)'}}>{i.l}</span>
               <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:'var(--g)',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis'}}>{i.v}</span>
@@ -1664,7 +1651,7 @@ function SettingsSection({ data, sbCfg, onDisconnect }) {
           ))}
           <div style={{display:'flex',gap:10,marginTop:16}}>
             <button className="btn btn-ghost btn-sm" onClick={testConn} disabled={testing}>{testing?'Testing…':'Test Connection'}</button>
-            <button className="btn btn-red btn-sm" onClick={()=>{if(window.confirm('Disconnect Supabase?')){clearSupabaseConfig();resetClient();onDisconnect()}}}>Disconnect</button>
+            <button className="btn btn-red btn-sm" onClick={()=>{if(window.confirm('Disconnect GitHub?')){clearGithubConfig();onDisconnect()}}}>Disconnect</button>
           </div>
         </div>
       </div>
@@ -1672,7 +1659,7 @@ function SettingsSection({ data, sbCfg, onDisconnect }) {
         <div className="card-corner tl"/><div className="card-corner tr"/>
         <div className="card-corner bl"/><div className="card-corner br"/>
         <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'var(--g)',letterSpacing:2,marginBottom:14}}>DATA BACKUP</div>
-        <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.6,marginBottom:16}}>Export all portfolio data as JSON backup. Data is also safely stored in Supabase — this is just an extra copy.</p>
+        <p style={{fontSize:13,color:'var(--tx2)',lineHeight:1.6,marginBottom:16}}>Export a local JSON backup of all portfolio data.</p>
         <button className="btn btn-green" onClick={exportData}>↓ Export JSON Backup</button>
       </div>
     </div>
@@ -1882,17 +1869,17 @@ const DEFAULTS = {
 }
 
 export default function App() {
-  const [setup,    setSetup]   = useState(!getSupabaseConfig())
+  const [setup,    setSetup]   = useState(!getGithubConfig())
   const [authed,   setAuthed]  = useState(false)
   const [page,     setPage]    = useState('dashboard')
   const [data,     setData]    = useState(DEFAULTS)
   const [loading,  setLoading] = useState(true)
-  const [syncState,setSyncState] = useState('idle') // 'idle' | 'saving' | 'saved'
+  const [syncState,setSyncState] = useState('idle')
   const [lastSync, setLastSync]  = useState(null)
   const syncTimer = useRef(null)
-  const sbCfg = getSupabaseConfig()
+  const ghCfg = getGithubConfig()
 
-  // Load data from Supabase on auth
+  // Load data from GitHub on auth
   useEffect(()=>{
     if (!authed) return
     ;(async()=>{
@@ -1901,19 +1888,6 @@ export default function App() {
       setData(loaded)
       setLoading(false)
     })()
-  }, [authed])
-
-  // Subscribe to realtime changes (other editors)
-  useEffect(()=>{
-    if (!authed) return
-    const unsub = subscribeToChanges(payload => {
-      const section = payload.new?.id
-      const value   = payload.new?.data
-      if (section && value) {
-        setData(d=>({...d,[section]:value}))
-      }
-    })
-    return unsub
   }, [authed])
 
   const handleSave = useCallback(async (section, value) => {
@@ -1949,7 +1923,7 @@ export default function App() {
     <>
       <FontLink/><style>{CSS}</style>
       <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',fontFamily:"'Share Tech Mono',monospace",color:'var(--g)',fontSize:14,letterSpacing:3}}>
-        LOADING FROM SUPABASE...
+        LOADING FROM GITHUB...
       </div>
     </>
   )
@@ -1963,11 +1937,11 @@ export default function App() {
         <aside className="sidebar">
           <div className="logo">
             <div className="logo-title">⬡ PORTFOLIO OS</div>
-            <div className="logo-sub">ADMIN PANEL · v3.0</div>
+            <div className="logo-sub">ADMIN PANEL · v4.0</div>
           </div>
           <div className="sb-status">
             <div style={{width:6,height:6,borderRadius:'50%',background:'var(--g)',boxShadow:'0 0 6px var(--g)'}}/>
-            <span style={{color:'var(--g)'}}>SUPABASE LIVE</span>
+            <span style={{color:'var(--g)'}}>GITHUB STORAGE</span>
           </div>
           <nav className="nav" aria-label="Admin navigation">
             {NAV.map(n=>(
@@ -1977,10 +1951,10 @@ export default function App() {
                 style={{width:'100%',textAlign:'left',background:'none',border:'none',cursor:'pointer'}}>
                 <span className="nav-icon" aria-hidden="true">{n.icon}</span>
                 <span>{n.label}</span>
-                {n.id==='credentials'&&counts.credentials>0&&<span className="nav-badge" aria-label={counts.credentials+' credentials'}>{counts.credentials}</span>}
-                {n.id==='projects'&&counts.projects>0&&<span className="nav-badge" aria-label={counts.projects+' projects'}>{counts.projects}</span>}
-                {n.id==='flags'&&counts.flags>0&&<span className="nav-badge" aria-label={counts.flags+' flags'}>{counts.flags}</span>}
-                {n.id==='skills'&&counts.skills>0&&<span className="nav-badge" aria-label={counts.skills+' skills'}>{counts.skills}</span>}
+                {n.id==='credentials'&&counts.credentials>0&&<span className="nav-badge">{counts.credentials}</span>}
+                {n.id==='projects'&&counts.projects>0&&<span className="nav-badge">{counts.projects}</span>}
+                {n.id==='flags'&&counts.flags>0&&<span className="nav-badge">{counts.flags}</span>}
+                {n.id==='skills'&&counts.skills>0&&<span className="nav-badge">{counts.skills}</span>}
               </button>
             ))}
           </nav>
@@ -2003,7 +1977,7 @@ export default function App() {
             </div>
           </div>
           <div className="content">
-            {page==='dashboard'   && <Dashboard   data={data} lastSync={lastSync} sbCfg={sbCfg}/>}
+            {page==='dashboard'   && <Dashboard        data={data} lastSync={lastSync} ghCfg={ghCfg}/>}
             {page==='about'       && <AboutSection       data={data.about}       onSave={v=>handleSave('about',v)}/>}
             {page==='skills'      && <SkillsSection       data={data.skills}      onSave={v=>handleSave('skills',v)}/>}
             {page==='credentials' && <CredentialsSection  data={data.credentials} onSave={v=>handleSave('credentials',v)}/>}
@@ -2011,7 +1985,7 @@ export default function App() {
             {page==='flags'       && <FlagsSection         data={data.flags}       onSave={v=>handleSave('flags',v)}/>}
             {page==='experience'  && <ExperienceSection   data={data.experience}  onSave={v=>handleSave('experience',v)}/>}
             {page==='contact'     && <ContactSection      data={data.contact}     onSave={v=>handleSave('contact',v)}/>}
-            {page==='settings'    && <SettingsSection     data={data} sbCfg={sbCfg} onDisconnect={()=>setSetup(true)}/>}
+            {page==='settings'    && <SettingsSection     data={data} ghCfg={ghCfg} onDisconnect={()=>setSetup(true)}/>}
           </div>
         </div>
       </div>

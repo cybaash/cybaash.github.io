@@ -101,8 +101,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: admin/package-lock.json
+          # NOTE: Do NOT use the built-in cache/cache-dependency-path here.
+          # When package-lock.json is inside a subdirectory (admin/) the
+          # actions/setup-node cache resolver fails with:
+          # "Some specified paths were not resolved, unable to cache dependencies."
+          # We handle caching manually with actions/cache below instead.
+
+      # ── Manual npm cache (replaces the broken setup-node built-in) ───────
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('admin/package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
 
       # ── Mirror data.json into admin/public before Vite build ─────────────
       # We use a hard-link rather than a copy: no extra disk space, instant.
@@ -117,7 +130,7 @@ jobs:
 
       - name: Install admin dependencies
         working-directory: admin
-        run: npm ci
+        run: npm ci --prefer-offline
 
       - name: Build admin panel (Vite)
         working-directory: admin

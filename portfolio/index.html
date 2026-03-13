@@ -713,7 +713,6 @@ window.toggleFolder = function(titleEl) {
     if (arrow) { arrow.style.transform = 'rotate(0deg)'; arrow.textContent = '▼'; }
     setTimeout(function(){
       body.style.maxHeight = 'none';
-      if(typeof cgApply === 'function') cgApply();
     }, 400);
   }
 };
@@ -744,14 +743,11 @@ window.switchTab = function(tab, btn) {
 window.cgApply = function() {
   var rawQ = (document.getElementById('cg-search')||{}).value||'';
   var q    = rawQ.toLowerCase().trim();
-  var cards = document.querySelectorAll('.cg-card');
+  var gallery = document.getElementById('cert-gallery');
+  var cards = gallery ? gallery.querySelectorAll('.cg-card') : document.querySelectorAll('.cg-card');
   var shown = 0;
 
   cards.forEach(function(card) {
-    // Don't touch visibility of cards inside collapsed folders
-    var folderBody = card.closest('.cg-folder-body');
-    if (folderBody && folderBody.classList.contains('collapsed')) return;
-
     var n      = (card.getAttribute('data-name')||'').toLowerCase();
     var iss    = card.getAttribute('data-issuer')||'';
     var type   = card.getAttribute('data-type')||'';

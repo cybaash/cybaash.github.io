@@ -701,7 +701,7 @@ window.toggleFolder = function(titleEl) {
   if (!body) return;
   var isOpen = !body.classList.contains('collapsed');
   if (isOpen) {
-    body.style.maxHeight = body.scrollHeight + 'px';
+    body.style.maxHeight = (body.scrollHeight || 9999) + 'px';
     requestAnimationFrame(function(){
       body.classList.add('collapsed');
       body.style.maxHeight = '0';
@@ -709,9 +709,9 @@ window.toggleFolder = function(titleEl) {
     });
   } else {
     body.classList.remove('collapsed');
-    body.style.maxHeight = body.scrollHeight + 'px';
+    body.style.maxHeight = '9999px';
     if (arrow) { arrow.style.transform = 'rotate(0deg)'; arrow.textContent = '▼'; }
-    setTimeout(function(){ body.style.maxHeight = 'none'; }, 360);
+    setTimeout(function(){ body.style.maxHeight = 'none'; }, 400);
   }
 };
 // Initialize folder heights

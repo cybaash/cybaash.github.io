@@ -1214,7 +1214,7 @@ function applyCredentials(creds) {
     if (c.logo && !c.logo.startsWith('data:')) {
       logoHtml = "<img alt='" + (c.issuer||'') + " logo' class='cg-logo' loading='lazy' " +
         "onerror=\"this.style.display='none';this.nextElementSibling.style.display='flex'\" " +
-        "src='" + c.logo + "' crossorigin='anonymous'>" +
+        "src='" + c.logo + "'>" +
         "<div style='display:none;width:100%;height:100%;align-items:center;justify-content:center;'>" +
         "<span style='font-size:32px;font-family:Orbitron,monospace;font-weight:900;color:" + initialsColor + ";text-shadow:0 0 16px " + initialsColor + "66;'>" + initials + "</span></div>";
     } else {

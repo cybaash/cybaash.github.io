@@ -1400,9 +1400,10 @@ function applyCredentials(creds) {
       } else {
         logoAreaHtml =
           "<div style='position:relative;width:100%;height:100%;'>" +
-          "<img src='" + effectiveLogo + "' alt='" + (c.issuer || "") + "'" +
+          "<img src='" + effectiveLogo + "' alt='" + (c.issuer || "") + "'" + 
           " style='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:16px;'" +
-          " onerror=\"this.style.display='none'\"" +
+          " data-fallback='" + ((c.logo && c.logo !== effectiveLogo && c.logo.startsWith('data:')) ? c.logo : (c.logoUpload||'')).replace(/'/g,"") + "'" +
+          " onerror=\\"var f=this.getAttribute('data-fallback');if(f&&this.src!==f){this.src=f;}else{this.style.display='none';}\\""  +
           "/>" +
           "</div>";
       }

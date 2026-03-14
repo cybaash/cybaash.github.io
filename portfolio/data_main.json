@@ -68,37 +68,6 @@
   ],
   "skills": [
     {
-      "id": "cat5",
-      "name": "AI & Emerging Tech",
-      "items": [
-        {
-          "id": "s21",
-          "name": "AI Security Research",
-          "level": "Advanced"
-        },
-        {
-          "id": "s22",
-          "name": "AI Red Teaming",
-          "level": "Advanced"
-        },
-        {
-          "id": "s23",
-          "name": "MLSecOps",
-          "level": "Intermediate"
-        },
-        {
-          "id": "s24",
-          "name": "LLM Security",
-          "level": "Intermediate"
-        },
-        {
-          "id": "s25",
-          "name": "Prompt Injection Defence",
-          "level": "Intermediate"
-        }
-      ]
-    },
-    {
       "id": "cat6",
       "name": "Tools & Languages",
       "items": [

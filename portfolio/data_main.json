@@ -1758,18 +1758,6 @@
       ]
     }
   ],
-  "projects": [
-    {
-      "id": "52bp47o4",
-      "title": "sdbn xf",
-      "desc": "zbcxcnbn",
-      "tech": [],
-      "status": "Completed",
-      "liveUrl": "",
-      "githubUrl": "",
-      "image": null,
-      "featured": false
-    }
-  ],
+  "projects": [],
   "flags": []
 }

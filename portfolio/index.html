@@ -1154,7 +1154,9 @@ async function loadAll() {
   // even when admin saves with [skip ci] (no redeploy triggered).
   // raw.githubusercontent.com has ~60s CDN cache, so updates appear within 1 minute.
   // Falls back to relative paths when running locally.
-  const RAW_BASE = 'https://raw.githubusercontent.com/cybaash/cybaash.github.io/main/';
+  // RAW_BASE: update GITHUB_BRANCH below if your default branch is not 'main'
+  const GITHUB_BRANCH = 'main';
+  const RAW_BASE = 'https://raw.githubusercontent.com/cybaash/cybaash.github.io/' + GITHUB_BRANCH + '/';
   const isLocal  = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:';
   // Cache-bust BOTH local and production fetches so admin saves are always reflected immediately.
   // raw.githubusercontent.com has a ~60s CDN cache; the timestamp query param bypasses it.
@@ -1594,10 +1596,13 @@ function applyProjects(projects) {
   var section = document.getElementById('projects');
   if (!grid) return;
   if (!projects || !projects.length) {
-    if (section) section.style.display = 'none';
+    // Hide section only if it hasn't been intentionally shown by the page layout.
+    // Use a data attribute so a future non-empty save can un-hide it on reload.
+    if (section && !section.getAttribute('data-always-show')) section.style.display = 'none';
     grid.innerHTML = '';
     return;
   }
+  // Ensure section is visible when data arrives
   if (section) section.style.display = '';
   var sc = {Completed:'success', 'In Progress':'active', Planned:'wip', Archived:'wip'};
   var scColor = {Completed:'#00ff41', 'In Progress':'#ff9900', Planned:'#00d4ff', Archived:'#ff4444'};
@@ -1630,8 +1635,14 @@ function applyExperience(experience) {
   // Sync stat-yrs: career span from earliest start date to present
   var earliestStart = 0;
   var currentYear = new Date().getFullYear();
+  // Parse year from dates stored as "YYYY-MM-DD", "YYYY-MM", or "Mon YYYY" (e.g. "Aug 2020")
+  function parseYear(d) {
+    if (!d) return 0;
+    var m4 = d.match(/\b(20\d\d|19\d\d)\b/);
+    return m4 ? parseInt(m4[1], 10) : 0;
+  }
   experience.forEach(function(exp) {
-    var start = exp.startDate ? parseInt(exp.startDate) : 0;
+    var start = parseYear(exp.startDate);
     if (start && (!earliestStart || start < earliestStart)) earliestStart = start;
   });
   var totalYears = earliestStart ? (currentYear - earliestStart) : 0;
@@ -1650,7 +1661,20 @@ function applyExperience(experience) {
   }
 
   var COLORS = ['#00ff41','#00d4ff','#ff9900','#a855f7','#ff4466','#44e5c8'];
-  function fmtDate(d) { if(!d) return ''; try { var p=d.split('-'); if(p.length>=2){ var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return m[parseInt(p[1],10)-1]+' '+p[0]; } return d; } catch(e){ return d; } }
+  function fmtDate(d) {
+    if (!d) return '';
+    try {
+      // "YYYY-MM" or "YYYY-MM-DD" → "Mon YYYY"
+      var p = d.split('-');
+      if (p.length >= 2 && p[0].length === 4) {
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var mo = months[parseInt(p[1], 10) - 1];
+        return mo ? mo + ' ' + p[0] : d;
+      }
+      // Already human-readable like "Aug 2020" — return as-is
+      return d;
+    } catch(e) { return d; }
+  }
   timeline.innerHTML = experience.map(function(exp, i) {
     var color = COLORS[i % COLORS.length];
     var period = fmtDate(exp.startDate||'') + ' &ndash; ' + (exp.current ? 'Present' : fmtDate(exp.endDate||''));
@@ -1691,7 +1715,7 @@ function applyFlags(flags) {
   var section = document.getElementById('flags');
   if (!grid) return;
   if (!flags || !flags.length) {
-    if (section) section.style.display = 'none';
+    if (section && !section.getAttribute('data-always-show')) section.style.display = 'none';
     grid.innerHTML = '';
     return;
   }

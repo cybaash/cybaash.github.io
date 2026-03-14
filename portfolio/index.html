@@ -689,7 +689,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #00ff41;}
 </section>
 
 
-<script>
+<script data-cfasync="false">
 
 // ─── FOLDER COLLAPSE / EXPAND ─────────────────────────────────────
 window.toggleFolder = function(titleEl) {
@@ -1120,7 +1120,14 @@ document.querySelectorAll('.cert-card,.focus-card,.contact-card').forEach(card=>
      All five are fetched simultaneously so the browser never downloads
      a single 11 MB blob — main sections paint almost instantly.
      ════════════════════════════════════════════════════════════════ -->
-<script type="module">
+<script data-cfasync="false">
+// NOTE: This was previously type="module" but that is blocked by the inline CSP
+// (script-src 'unsafe-inline' does NOT cover inline module scripts in CSP Level 3)
+// and by Cloudflare Rocket Loader. Converted to a plain script wrapped in an IIFE
+// for scope isolation. No module-specific syntax (import/export/top-level await)
+// was used, so this is a drop-in replacement.
+(function () {
+'use strict';
 // ── Stream a single JSON file → parsed object ────────────────────────────────
 // Uses ReadableStream for large credential files (up to ~3.4 MB).
 // Falls back to r.json() when r.body is null — this happens on iOS Safari <14.1,
@@ -1794,6 +1801,7 @@ function applySection(id, data) {
   if (map[id]) map[id](data);
 }
 
+})(); // end IIFE
 </script>
 
 

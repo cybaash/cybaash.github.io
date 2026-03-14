@@ -68,37 +68,6 @@
   ],
   "skills": [
     {
-      "id": "cat2",
-      "name": "Network & Defense",
-      "items": [
-        {
-          "id": "s6",
-          "name": "Network Defense",
-          "level": "Expert"
-        },
-        {
-          "id": "s7",
-          "name": "Incident Response",
-          "level": "Advanced"
-        },
-        {
-          "id": "s8",
-          "name": "SIEM / Log Analysis",
-          "level": "Advanced"
-        },
-        {
-          "id": "s9",
-          "name": "Firewall & IDS/IPS",
-          "level": "Advanced"
-        },
-        {
-          "id": "s10",
-          "name": "Threat Intelligence",
-          "level": "Intermediate"
-        }
-      ]
-    },
-    {
       "id": "cat3",
       "name": "Cloud & Infrastructure",
       "items": [

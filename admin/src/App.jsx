@@ -1396,7 +1396,7 @@ function ProjectsSection({ data, onSave }) {
               <span className={`badge badge-${STATUS_COLOR[p.status]||'green'}`} style={{fontSize:9,marginLeft:8}}>{p.status}</span>
             </div>
             {p.featured&&<div style={{marginBottom:6}}><span className="badge badge-amber" style={{fontSize:9}}>★ FEATURED</span></div>}
-            <p style={{fontSize:12,color:'var(--tx2)',lineHeight:1.5,marginBottom:12}}>{p.desc}</p>
+            <p style={{fontSize:12,color:'var(--tx2)',lineHeight:1.5,marginBottom:12,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',wordBreak:'break-word'}}>{p.desc}</p>
             <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:14}}>{p.tech?.map(t=><span className="badge badge-blue" key={t} style={{fontSize:10}}>{t}</span>)}</div>
             <div style={{display:'flex',gap:8}}>
               {p.liveUrl&&<a href={p.liveUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">↗ Live</a>}
@@ -1491,8 +1491,8 @@ function FlagsSection({ data, onSave }) {
               <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'var(--red)',letterSpacing:2}}>{f.platform}</span>
               <span className={`badge badge-${DIFF_COLORS[f.difficulty]||'amber'}`} style={{fontSize:9}}>{f.difficulty}</span>
             </div>
-            <div style={{fontFamily:"'Orbitron',monospace",fontSize:12,color:'var(--tx)',marginBottom:6}}>{f.room||f.title||'Unnamed Room'}</div>
-            {f.desc&&<p style={{fontSize:11,color:'var(--tx2)',lineHeight:1.6,marginBottom:8}}>{f.desc}</p>}
+            <div style={{fontFamily:"'Orbitron',monospace",fontSize:12,color:'var(--tx)',marginBottom:6,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.room||f.title||'Unnamed Room'}</div>
+            {f.desc&&<p style={{fontSize:11,color:'var(--tx2)',lineHeight:1.6,marginBottom:8,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',wordBreak:'break-word'}}>{f.desc}</p>}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}}>
               <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'var(--tx3)'}}>{f.date}</span>
               <div style={{display:'flex',gap:8}}>

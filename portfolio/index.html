@@ -279,11 +279,11 @@ body.light-mode .hero-name-1{color:#007a20;text-shadow:0 0 20px #007a2055;}
 /* ── FLAGS SECTION ───────────────────────────────────────────────── */
 #flags{padding:80px 24px;}
 .flags-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:24px;}
-.flag-card{background:#070f07;border:1px solid #1a3a1a;border-radius:4px;padding:18px;transition:all 0.3s;position:relative;}
+.flag-card{background:#070f07;border:1px solid #1a3a1a;border-radius:4px;padding:18px;transition:all 0.3s;position:relative;overflow:hidden;word-break:break-word;}
 .flag-card:hover{transform:translateY(-2px);border-color:#ff444466;box-shadow:0 8px 24px rgba(255,68,68,0.1);}
 .flag-platform{font-size:9px;letter-spacing:2px;color:#ff4444;font-family:'Orbitron',monospace;margin-bottom:6px;}
-.flag-room{font-family:'Orbitron',monospace;font-size:12px;color:#c8ffc8;margin-bottom:6px;}
-.flag-desc{font-size:11px;color:#5a9a5a;line-height:1.7;margin-bottom:10px;}
+.flag-room{font-family:'Orbitron',monospace;font-size:12px;color:#c8ffc8;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.flag-desc{font-size:11px;color:#5a9a5a;line-height:1.7;margin-bottom:10px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;}
 .flag-difficulty{display:inline-block;font-size:8px;padding:2px 8px;border-radius:2px;letter-spacing:2px;}
 .flag-difficulty.easy{background:#00ff4122;border:1px solid #00ff4144;color:#00ff41;}
 .flag-difficulty.medium{background:#ff990022;border:1px solid #ff990044;color:#ff9900;}

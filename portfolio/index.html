@@ -1620,7 +1620,7 @@ function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").
 
 function safeUrl(u) {
   if (!u) return '#';
-  var s = String(u).trim();
+  var s = String(u).trim().replace(/^['"]+|['"]+$/g, ''); // strip stray quotes
   return /^https?:\/\//i.test(s) ? s : '#';
 }
 

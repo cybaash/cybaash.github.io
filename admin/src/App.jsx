@@ -1458,7 +1458,11 @@ function FlagsSection({ data, onSave }) {
     } finally { setSaving(false) }
   }
   const open   = (id=null) => { setForm(id?{...items.find(f=>f.id===id)}:BLANK_FLAG()); setModal(id||'new') }
-  const save   = async () => { const prev=items; await commit(modal==='new'?[...items,form]:items.map(f=>f.id===modal?form:f), prev); setModal(null) }
+  const save   = async () => {
+    if (!form.room || !form.room.trim()) { alert('Room / Challenge Name is required.'); return; }
+    if (form.url && form.url.trim() && !/^https?:\/\//i.test(form.url.trim())) { alert('Room URL must start with https:// (or leave it blank).'); return; }
+    const prev=items; await commit(modal==='new'?[...items,form]:items.map(f=>f.id===modal?form:f), prev); setModal(null)
+  }
   const del    = async id  => { const prev=items; await commit(items.filter(f=>f.id!==id), prev); setConfirm(null) }
   const u      = k => e => setForm(p=>({...p,[k]:e.target.value}))
   return (

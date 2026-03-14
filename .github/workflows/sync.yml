@@ -45,7 +45,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       total_creds: ${{ steps.stats.outputs.total_creds }}
-      needs_build: ${{ steps.detect.outputs.needs_build }}
 
     steps:
       - name: Checkout repository
@@ -175,14 +174,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ runner.os }}-${{ hashFiles('admin/package.json') }}
+          key: npm-${{ runner.os }}-${{ hashFiles('admin/package-lock.json') }}
           restore-keys: |
             npm-${{ runner.os }}-
 
       - name: Install admin dependencies
         if: steps.admin-dist-cache.outputs.cache-hit != 'true'
         working-directory: admin
-        run: npm install --no-audit --no-fund --prefer-offline
+        run: npm ci --no-audit --no-fund
 
       - name: Build admin panel (Vite)
         if: steps.admin-dist-cache.outputs.cache-hit != 'true'
@@ -208,6 +207,9 @@ jobs:
           # Portfolio HTML
           cp portfolio/index.html _site/index.html
           cp portfolio/index.html _site/404.html
+
+          # LinkedIn logo (externalised from inline base64)
+          [ -f portfolio/li-logo.jpg ] && cp portfolio/li-logo.jpg _site/portfolio/li-logo.jpg || true
 
           # All 5 split data files
           for f in portfolio/data_main.json portfolio/data_creds_1.json portfolio/data_creds_2.json portfolio/data_creds_3.json portfolio/data_creds_4.json portfolio/data_creds_5.json; do

@@ -265,7 +265,7 @@ body.light-mode .hero-name-1{color:#007a20;text-shadow:0 0 20px #007a2055;}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:24px;}
 .proj-card{background:#070f07;border:1px solid #1a3a1a;border-radius:4px;padding:20px;transition:all 0.3s;position:relative;overflow:hidden;}
 .proj-card:hover{transform:translateY(-3px);border-color:#00ff4166;box-shadow:0 8px 32px rgba(0,255,65,0.1);}
-.proj-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 50%,rgba(0,255,65,0.025));}
+.proj-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 50%,rgba(0,255,65,0.025));pointer-events:none;}
 .proj-status{display:inline-block;font-size:8px;padding:2px 8px;border-radius:2px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
 .proj-status.success{background:#00ff4122;border:1px solid #00ff4144;color:#00ff41;}
 .proj-status.active{background:#ff990022;border:1px solid #ff990044;color:#ff9900;}

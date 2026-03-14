@@ -66,39 +66,7 @@
       ]
     }
   ],
-  "skills": [
-    {
-      "id": "cat6",
-      "name": "Tools & Languages",
-      "items": [
-        {
-          "id": "s26",
-          "name": "Kali Linux / Metasploit",
-          "level": "Expert"
-        },
-        {
-          "id": "s27",
-          "name": "Burp Suite",
-          "level": "Expert"
-        },
-        {
-          "id": "s28",
-          "name": "Python / Bash Scripting",
-          "level": "Advanced"
-        },
-        {
-          "id": "s29",
-          "name": "Wireshark / Nmap",
-          "level": "Advanced"
-        },
-        {
-          "id": "s30",
-          "name": "OSINT Techniques",
-          "level": "Advanced"
-        }
-      ]
-    }
-  ],
+  "skills": [],
   "projects": [],
   "flags": []
 }

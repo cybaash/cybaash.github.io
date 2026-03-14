@@ -1,0 +1,92 @@
+##############################################################################
+#  setup_lfs.yml — LFS cleanup (no longer needed)
+#
+#  Git LFS has been removed from this repo because data.json was split
+#  into 5 files that are each under 4 MB — well within GitHub's normal limits.
+#
+#  If you previously ran the LFS migration, this workflow will:
+#    1. Remove the LFS tracking rule from .gitattributes
+#    2. Run `git lfs migrate export` to bring the real files back into git
+#    3. Commit and push the cleaned-up history
+#
+#  HOW TO RUN (one-time cleanup, only if you previously used LFS):
+#    1. Go to your repo → Actions tab
+#    2. Click "Remove Git LFS (cleanup)" in the left sidebar
+#    3. Click "Run workflow" → "Run workflow"
+#
+#  If you never set up LFS, you do not need to run this at all.
+##############################################################################
+
+name: Remove Git LFS (cleanup, one-time)
+
+on:
+  workflow_dispatch:   # manual trigger only
+
+permissions:
+  contents: write
+
+jobs:
+  remove-lfs:
+    name: Remove LFS tracking from data files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check if LFS is active
+        id: check
+        run: |
+          if git lfs ls-files | grep -q .; then
+            echo "has_lfs=true" >> $GITHUB_OUTPUT
+            echo "LFS objects found — will migrate out."
+          else
+            echo "has_lfs=false" >> $GITHUB_OUTPUT
+            echo "No LFS objects found — nothing to do."
+          fi
+
+      - name: Export LFS objects back into regular git
+        if: steps.check.outputs.has_lfs == 'true'
+        run: |
+          git lfs migrate export --include="portfolio/data.json" --yes --everything || true
+          git lfs ls-files
+
+      - name: Remove LFS tracking rules from .gitattributes
+        if: steps.check.outputs.has_lfs == 'true'
+        run: |
+          # Remove any line that sets filter=lfs for data.json
+          sed -i '/portfolio\/data\.json.*filter=lfs/d' .gitattributes || true
+          cat .gitattributes
+
+      - name: Commit cleanup
+        if: steps.check.outputs.has_lfs == 'true'
+        run: |
+          git add .gitattributes
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: remove Git LFS (data split into <4 MB files) [skip ci]"
+          fi
+
+      - name: Push cleaned history
+        if: steps.check.outputs.has_lfs == 'true'
+        run: |
+          git push --force-with-lease origin main
+          echo "✅ LFS removed. All data files are now regular git objects."
+
+      - name: Already clean
+        if: steps.check.outputs.has_lfs == 'false'
+        run: echo "✅ Repository has no LFS objects. No changes needed."
